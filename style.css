@@ -36,3 +36,103 @@ h1 { font-size: 3rem; }
 }
 
 .step h3 { color: #FFD84D; }
+
+/* ---------- Sidebar layout (home page) ---------- */
+body.home { margin: 0; padding: 0; text-align: left; }
+
+.layout { display: flex; min-height: 100vh; }
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  width: 220px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem;
+  background: #170B2A;
+  border-right: 1px solid #2E1A4A;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 0.5rem;
+  color: #F5F0FA;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.logo::before {
+  content: "";
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: inset -7px -2px 0 0 #FFD84D;
+}
+
+.tabs { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.tab {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  color: #F5F0FA;
+  font-weight: 600;
+  text-decoration: none;
+}
+.tab:hover { background: #2E1A4A; }
+.tab[aria-current="page"] { background: #2E1A4A; box-shadow: inset 4px 0 0 #FFD84D; }
+.tab.disabled { color: #8F7DB0; cursor: default; }
+.tab.disabled:hover { background: transparent; }
+.tab small { color: #FFD84D; font-weight: 600; }
+.tab:focus-visible, .logo:focus-visible { outline: 3px solid #FFD84D; outline-offset: 2px; }
+
+.side-coins {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+  color: #FFD84D;
+  font-weight: 700;
+}
+.coin-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #FFD84D;
+  box-shadow: 0 0 10px rgba(255, 216, 77, 0.6);
+}
+
+.content { flex: 1; min-width: 0; text-align: center; padding: 4rem 1.5rem; }
+
+/* Phones and small windows: the sidebar becomes a bar across the top */
+@media (max-width: 720px) {
+  .layout { flex-direction: column; }
+  .sidebar {
+    position: static;
+    height: auto;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-right: 0;
+    border-bottom: 1px solid #2E1A4A;
+  }
+  .tabs { order: 3; width: 100%; flex-direction: row; }
+  .tab { flex: 1; justify-content: center; gap: 0.4rem; padding: 0.6rem 0.5rem; }
+  .tab[aria-current="page"] { box-shadow: inset 0 -3px 0 #FFD84D; }
+  .side-coins { margin-top: 0; }
+  .content { padding: 2.5rem 1rem; }
+}
