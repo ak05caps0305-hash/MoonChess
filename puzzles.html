@@ -1,1 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Puzzles | Moonchess</title>
+  <meta name="description" content="Solve chess puzzles and earn mooncoins.">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { padding: 1.5rem 1rem 3rem; }
 
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .home-link { color: #F5F0FA; font-weight: 700; text-decoration: none; }
+    .coins { display: flex; align-items: center; gap: 0.5rem; color: #FFD84D; font-weight: 700; }
+    .coin-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #FFD84D;
+      box-shadow: 0 0 10px rgba(255, 216, 77, 0.6);
+    }
+
+    .puzzle-wrap { max-width: 520px; margin: 2rem auto 0; }
+    #puzzle-count { margin: 0; color: #B9A5E3; }
+    #puzzle-title { font-size: 2rem; margin: 0.25rem 0 0.75rem; }
+    #status { min-height: 1.5em; margin: 0; }
+    #status.good { color: #FFD84D; font-weight: 700; }
+    #status.bad { color: #FF9AA2; }
+
+    .board {
+      width: min(92vw, 480px);
+      aspect-ratio: 1;
+      margin: 1.5rem auto;
+      display: grid;
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+      grid-template-rows: repeat(8, minmax(0, 1fr));
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 0 3px #2E1A4A;
+    }
+    .sq {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      padding: 0;
+      font: inherit;
+      font-size: min(9vw, 46px);
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+    }
+    .sq.light { background: #B9A5E3; }
+    .sq.dark { background: #6B4BA3; }
+    .sq.last::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 216, 77, 0.35);
+      pointer-events: none;
+    }
+    .sq.selected, .sq.hint { box-shadow: inset 0 0 0 4px #FFD84D; }
+    .piece { position: relative; }
+    .piece.w {
+      color: #FFF6D6;
+      text-shadow: 0 0 3px #1E1033, 0 0 3px #1E1033, 0 0 3px #1E1033;
+    }
+    .piece.b {
+      color: #1E1033;
+      text-shadow: 0 0 3px #F5F0FA, 0 0 3px #F5F0FA;
+    }
+
+    .controls { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; }
+    .btn {
+      font: inherit;
+      font-weight: 700;
+      padding: 0.65rem 1.2rem;
+      border-radius: 8px;
+      border: 2px solid #6B4BA3;
+      background: transparent;
+      color: #F5F0FA;
+      cursor: pointer;
+    }
+    .btn:hover { background: #2E1A4A; }
+    .btn.primary { background: #FFD84D; border-color: #FFD84D; color: #1E1033; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn:focus-visible, .sq:focus-visible { outline: 3px solid #FFD84D; outline-offset: 2px; }
+    .sq:focus-visible { outline-offset: -3px; }
+
+    @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+    .board.shake { animation: shake 0.3s; }
+    @media (prefers-reduced-motion: reduce) { .board.shake { animation: none; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="home-link" href="index.html">Moonchess</a>
+    <div class="coins" aria-live="polite">
+      <span class="coin-dot"></span>
+      <span><span id="coin-count">0</span> mooncoins</span>
+    </div>
+  </header>
+
+  <main class="puzzle-wrap">
+    <p id="puzzle-count"></p>
+    <h1 id="puzzle-title"></h1>
+    <p id="status"></p>
+
+    <div id="board" class="board" aria-label="Chess board"></div>
+
+    <div class="controls">
+      <button type="button" id="hint-btn" class="btn">Hint</button>
+      <button type="button" id="restart-btn" class="btn">Restart</button>
+      <button type="button" id="next-btn" class="btn">Next puzzle</button>
+    </div>
+  </main>
+
+  <script>
+    // ---- logic (pure functions, no page access) ----
+    const FILES = "abcdefgh";
+    const GLYPH = { k: "\u265A", q: "\u265B", r: "\u265C", b: "\u265D", n: "\u265E", p: "\u265F\uFE0E" };
+    const PIECE_NAMES = { k: "king", q: "queen", r: "rook", b: "bishop", n: "knight", p: "pawn" };
+
+    // moves: the player's moves and the opponent's replies, in order, written as
+    // "from square + to square". An array means any of those moves is accepted.
+    const PUZZLES = [
+      {
+        id: "scholars-mate",
+        title: "Scholar’s mate",
+        fen: "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w - - 4 4",
+        moves: ["h5f7"]
+      },
+      {
+        id: "back-rank-mate",
+        title: "Back-rank mate",
+        fen: "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
+        moves: ["a1a8"]
+      },
+      {
+        id: "fools-mate",
+        title: "Fool’s mate",
+        fen: "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b - - 0 2",
+        moves: ["d8h4"]
+      },
+      {
+        id: "smothered-mate",
+        title: "Smothered mate",
+        fen: "6rk/6pp/8/6N1/8/8/8/6K1 w - - 0 1",
+        moves: ["g5f7"]
+      },
+      {
+        id: "legals-mate",
+        title: "Légal’s mate",
+        fen: "rn1qkbnr/ppp2p1p/3p2p1/4N3/2B1P3/2N5/PPPP1PPP/R1BbK2R w - - 0 6",
+        moves: ["c4f7", "e8e7", "c3d5"]
+      }
+    ];
+
+    function sqIndex(name) { return (8 - Number(name[1])) * 8 + FILES.indexOf(name[0]); }
+    function sqName(i) { return FILES[i % 8] + (8 - Math.floor(i / 8)); }
+    function isWhite(piece) { return piece !== "" && piece === piece.toUpperCase(); }
+
+    function parseFen(fen) {
+      const parts = fen.split(" ");
+      const board = [];
+      for (const ch of parts[0].replace(/\//g, "")) {
+        if (/\d/.test(ch)) {
+          for (let n = 0; n < Number(ch); n++) board.push("");
+        } else {
+          board.push(ch);
+        }
+      }
+      return { board: board, turn: parts[1] };
+    }
+
+    function applyMove(board, uci) {
+      const next = board.slice();
+      const from = sqIndex(uci.slice(0, 2));
+      const to = sqIndex(uci.slice(2, 4));
+      const piece = next[from];
+      const type = piece.toLowerCase();
+      const fromRow = Math.floor(from / 8);
+      const toRow = Math.floor(to / 8);
+      const fromCol = from % 8;
+      const toCol = to % 8;
+
+      // en passant: a pawn moves diagonally onto an empty square
+      if (type === "p" && fromCol !== toCol && next[to] === "") next[fromRow * 8 + toCol] = "";
+
+      // castling: the king moves two squares, so the rook jumps over it
+      if (type === "k" && Math.abs(toCol - fromCol) === 2) {
+        const rookFrom = fromRow * 8 + (toCol > fromCol ? 7 : 0);
+        const rookTo = fromRow * 8 + (toCol > fromCol ? 5 : 3);
+        next[rookTo] = next[rookFrom];
+        next[rookFrom] = "";
+      }
+
+      next[to] = piece;
+      next[from] = "";
+
+      // promotion: queen unless the move says otherwise
+      if (type === "p" && (toRow === 0 || toRow === 7)) {
+        const promo = uci[4] || "q";
+        next[to] = isWhite(piece) ? promo.toUpperCase() : promo.toLowerCase();
+      }
+      return next;
+    }
+
+    function acceptedMoves(step) { return Array.isArray(step) ? step : [step]; }
+    function isCorrect(step, attempt) {
+      return acceptedMoves(step).some(function (m) { return m.slice(0, 4) === attempt; });
+    }
+    // ---- end logic ----
+
+    // Saving: coins and solved puzzles are stored in this browser only.
+    const COIN_KEY = "moonchess.coins";
+    const SOLVED_KEY = "moonchess.solved";
+
+    function readStore(key, fallback) {
+      try {
+        const value = localStorage.getItem(key);
+        return value === null ? fallback : JSON.parse(value);
+      } catch (e) {
+        return fallback;
+      }
+    }
+    function writeStore(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+    }
+    function getSolved() {
+      const solved = readStore(SOLVED_KEY, []);
+      return Array.isArray(solved) ? solved : [];
+    }
+    function getCoins() {
+      const coins = readStore(COIN_KEY, 0);
+      return typeof coins === "number" ? coins : 0;
+    }
+    function updateCoins() {
+      document.getElementById("coin-count").textContent = getCoins();
+    }
+
+    // Game state
+    let puzzleIndex = 0;
+    let puzzle = null;
+    let board = [];
+    let playerIsWhite = true;
+    let step = 0;
+    let selected = null;
+    let hintSquare = null;
+    let lastMove = [];
+    let locked = false;
+    let solved = false;
+
+    const boardEl = document.getElementById("board");
+    const statusEl = document.getElementById("status");
+    const hintBtn = document.getElementById("hint-btn");
+    const nextBtn = document.getElementById("next-btn");
+
+    function setStatus(text, kind) {
+      statusEl.textContent = text;
+      statusEl.className = kind || "";
+    }
+
+    function updateButtons() {
+      hintBtn.disabled = locked || solved;
+      nextBtn.className = solved ? "btn primary" : "btn";
+      nextBtn.textContent = puzzleIndex === PUZZLES.length - 1 ? "Start over" : "Next puzzle";
+    }
+
+    function render() {
+      const focusedIndex = document.activeElement && document.activeElement.dataset
+        ? document.activeElement.dataset.index : undefined;
+      boardEl.innerHTML = "";
+
+      const order = [];
+      for (let i = 0; i < 64; i++) order.push(i);
+      if (!playerIsWhite) order.reverse();
+
+      for (const i of order) {
+        const row = Math.floor(i / 8);
+        const col = i % 8;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.index = i;
+        btn.className = "sq " + ((row + col) % 2 === 0 ? "light" : "dark");
+        if (i === selected) btn.classList.add("selected");
+        if (i === hintSquare) btn.classList.add("hint");
+        if (lastMove.indexOf(i) !== -1) btn.classList.add("last");
+
+        const piece = board[i];
+        let label = sqName(i) + ", empty";
+        if (piece) {
+          label = sqName(i) + ", " + (isWhite(piece) ? "white " : "black ") + PIECE_NAMES[piece.toLowerCase()];
+          const span = document.createElement("span");
+          span.className = "piece " + (isWhite(piece) ? "w" : "b");
+          span.textContent = GLYPH[piece.toLowerCase()];
+          btn.appendChild(span);
+        }
+        btn.setAttribute("aria-label", label);
+        btn.addEventListener("click", function () { onSquareClick(i); });
+        boardEl.appendChild(btn);
+      }
+
+      if (focusedIndex !== undefined) {
+        const again = boardEl.querySelector('[data-index="' + focusedIndex + '"]');
+        if (again) again.focus();
+      }
+      updateButtons();
+    }
+
+    function loadPuzzle(index) {
+      puzzleIndex = index;
+      puzzle = PUZZLES[index];
+      const parsed = parseFen(puzzle.fen);
+      board = parsed.board;
+      playerIsWhite = parsed.turn === "w";
+      step = 0;
+      selected = null;
+      hintSquare = null;
+      lastMove = [];
+      locked = false;
+      solved = false;
+
+      document.getElementById("puzzle-count").textContent = "Puzzle " + (index + 1) + " of " + PUZZLES.length;
+      document.getElementById("puzzle-title").textContent = puzzle.title;
+      const mateIn = Math.ceil(puzzle.moves.length / 2);
+      setStatus((playerIsWhite ? "White" : "Black") + " to move. Find checkmate in " + mateIn + ".");
+      render();
+    }
+
+    function onSquareClick(i) {
+      if (locked || solved) return;
+      const piece = board[i];
+      const mine = piece !== "" && isWhite(piece) === playerIsWhite;
+
+      if (selected === null) {
+        if (mine) { selected = i; hintSquare = null; render(); }
+        return;
+      }
+      if (i === selected) { selected = null; render(); return; }
+      if (mine) { selected = i; hintSquare = null; render(); return; }
+      tryMove(selected, i);
+    }
+
+    function tryMove(from, to) {
+      const attempt = sqName(from) + sqName(to);
+
+      if (!isCorrect(puzzle.moves[step], attempt)) {
+        selected = null;
+        setStatus("Not quite. Try a different move.", "bad");
+        boardEl.classList.add("shake");
+        setTimeout(function () { boardEl.classList.remove("shake"); }, 300);
+        render();
+        return;
+      }
+
+      board = applyMove(board, attempt);
+      lastMove = [from, to];
+      selected = null;
+      hintSquare = null;
+      step++;
+
+      if (step >= puzzle.moves.length) {
+        finishPuzzle();
+        render();
+        return;
+      }
+
+      locked = true;
+      setStatus("Good move. Watch the reply.");
+      render();
+
+      setTimeout(function () {
+        const reply = puzzle.moves[step];
+        board = applyMove(board, reply);
+        lastMove = [sqIndex(reply.slice(0, 2)), sqIndex(reply.slice(2, 4))];
+        step++;
+        locked = false;
+        setStatus("Your move again. Find the checkmate.");
+        render();
+      }, 700);
+    }
+
+    function finishPuzzle() {
+      solved = true;
+      const done = getSolved();
+      if (done.indexOf(puzzle.id) === -1) {
+        done.push(puzzle.id);
+        writeStore(SOLVED_KEY, done);
+        writeStore(COIN_KEY, getCoins() + 1);
+        updateCoins();
+        setStatus("Checkmate! You earned 1 mooncoin.", "good");
+      } else {
+        setStatus("Checkmate! You already earned the mooncoin for this puzzle.", "good");
+      }
+    }
+
+    hintBtn.addEventListener("click", function () {
+      if (locked || solved) return;
+      hintSquare = sqIndex(acceptedMoves(puzzle.moves[step])[0].slice(0, 2));
+      selected = null;
+      setStatus("Try moving the highlighted piece.");
+      render();
+    });
+
+    document.getElementById("restart-btn").addEventListener("click", function () {
+      loadPuzzle(puzzleIndex);
+    });
+
+    nextBtn.addEventListener("click", function () {
+      loadPuzzle((puzzleIndex + 1) % PUZZLES.length);
+    });
+
+    // Start on the first puzzle you haven't solved yet
+    updateCoins();
+    const firstUnsolved = PUZZLES.findIndex(function (p) { return getSolved().indexOf(p.id) === -1; });
+    loadPuzzle(firstUnsolved === -1 ? 0 : firstUnsolved);
+  </script>
+</body>
+</html>
