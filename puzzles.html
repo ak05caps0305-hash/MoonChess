@@ -298,9 +298,17 @@
         let label = sqName(i) + ", empty";
         if (piece) {
           label = sqName(i) + ", " + (isWhite(piece) ? "white " : "black ") + PIECE_NAMES[piece.toLowerCase()];
-          const span = document.createElement("span");
+                  const span = document.createElement("span");
           span.className = "piece " + (isWhite(piece) ? "w" : "b");
-          span.textContent = GLYPH[piece.toLowerCase()];
+          const img = document.createElement("img");
+          img.alt = "";
+          img.draggable = false;
+          img.onerror = function () {
+            img.remove();
+            span.textContent = GLYPH[piece.toLowerCase()];
+          };
+          img.src = "pieces/" + (isWhite(piece) ? "w" : "b") + piece.toUpperCase() + ".svg";
+          span.appendChild(img);
           btn.appendChild(span);
         }
         btn.setAttribute("aria-label", label);
