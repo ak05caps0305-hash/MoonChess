@@ -335,9 +335,11 @@
       renderBoard();
     }
 
-    function renderBoard() {
+        function renderBoard() {
       boardEl.innerHTML = "";
-      for (let i = 0; i < 64; i++) {
+      const flipped = state.turn === "b";
+      for (let step = 0; step < 64; step++) {
+        const i = flipped ? 63 - step : step;
         const row = Math.floor(i / 8);
         const col = i % 8;
         const isLight = (row + col) % 2 === 0;
