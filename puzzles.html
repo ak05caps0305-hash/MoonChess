@@ -357,17 +357,20 @@
           : name
         );
 
-        if (piece) {
+             if (piece) {
+          const color = isWhite(piece) ? "ivory" : "charcoal";
+          const typeName = PIECE_NAMES[piece.toLowerCase()];
           const span = document.createElement("span");
           span.className = "piece " + (isWhite(piece) ? "w" : "b");
-          span.textContent = GLYPH[piece.toLowerCase()];
+
+          const img = document.createElement("img");
+          img.src = color + "-" + typeName + ".svg";
+          img.alt = "";
+          span.appendChild(img);
+
           sq.appendChild(span);
         }
 
-        sq.addEventListener("click", function () { handleSquareClick(i); });
-        boardEl.appendChild(sq);
-      }
-    }
 
     function handleSquareClick(idx) {
       if (state.solved) return;
