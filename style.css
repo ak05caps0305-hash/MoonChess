@@ -17,3 +17,22 @@ h1 { font-size: 3rem; }
   text-decoration: none;
   font-weight: bold;
 }
+
+.how { margin-top: 4rem; }
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.step {
+  background: #2E1A4A;
+  padding: 1.5rem;
+  border-radius: 12px;
+  max-width: 240px;
+}
+
+.step h3 { color: #FFD84D; }
