@@ -1,1 +1,19 @@
+body {
+  background: #1E1033;
+  color: #F5F0FA;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+  padding: 4rem 1rem;
+}
 
+h1 { font-size: 3rem; }
+
+.button {
+  display: inline-block;
+  background: #FFD84D;
+  color: #1E1033;
+  padding: 0.8rem 1.6rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+}
