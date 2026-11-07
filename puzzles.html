@@ -100,13 +100,25 @@
     @media (prefers-reduced-motion: reduce) { .board.shake { animation: none; } }
   </style>
 </head>
-<body>
-  <header class="topbar">
-    <a class="home-link" href="index.html">Moonchess</a>
-    <div class="coins" aria-live="polite">
-      <span class="coin-dot"></span>
-      <span><span id="coin-count">0</span> mooncoins</span>
-    </div>
+<body class="home">
+  <div class="layout">
+    <aside class="sidebar">
+      <a class="logo" href="index.html">Moonchess</a>
+
+      <nav class="tabs" aria-label="Main">
+        <a class="tab" href="index.html">Home</a>
+        <a class="tab" href="puzzles.html" aria-current="page">Puzzles</a>
+        <span class="tab disabled" aria-disabled="true">Courses <small>Soon</small></span>
+      </nav>
+
+      <div class="side-coins" aria-live="polite">
+        <span class="coin-dot"></span>
+        <span><span id="coin-count">0</span> mooncoins</span>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="puzzle-wrap">
   </header>
 
   <main class="puzzle-wrap">
