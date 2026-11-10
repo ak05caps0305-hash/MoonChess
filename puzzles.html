@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,40 +7,22 @@
   <title>Puzzles | Moonchess</title>
   <meta name="description" content="Solve chess puzzles and earn mooncoins.">
   <link rel="stylesheet" href="style.css">
+
   <style>
-    body { padding: 1.5rem 1rem 3rem; }
-
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      max-width: 480px;
-      margin: 0 auto;
-    }
-    .home-link { color: #F5F0FA; font-weight: 700; text-decoration: none; }
-    .coins { display: flex; align-items: center; gap: 0.5rem; color: #FFD84D; font-weight: 700; }
-    .coin-dot {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #FFD84D;
-      box-shadow: 0 0 10px rgba(255, 216, 77, 0.6);
-    }
-
     .puzzle-wrap {
-      max-width: 1000px;
-      margin: 1rem auto 0;
+      max-width: 1050px;
+      margin: 0 auto;
       display: flex;
-      flex-direction: row;
       align-items: flex-start;
-      gap: 2.5rem;
+      justify-content: center;
+      gap: 2rem;
     }
 
     .board {
-      width: min(85vw, 620px);
-      flex-shrink: 0;
+      width: min(100%, 560px);
+      flex: 1 1 480px;
+      min-width: 0;
       aspect-ratio: 1;
-      margin: 0;
       display: grid;
       grid-template-columns: repeat(8, minmax(0, 1fr));
       grid-template-rows: repeat(8, minmax(0, 1fr));
@@ -49,19 +32,38 @@
     }
 
     .puzzle-panel {
-      flex: 1;
-      min-width: 260px;
+      flex: 0 1 310px;
+      min-width: 0;
       background: rgba(46, 26, 74, 0.35);
       border: 2px solid #2E1A4A;
       border-radius: 12px;
       padding: 1.5rem;
+      text-align: left;
     }
 
-    #puzzle-count { margin: 0; color: #B9A5E3; }
-    #puzzle-title { font-size: 2rem; margin: 0.25rem 0 0.75rem; }
-    #status { min-height: 1.5em; margin: 0 0 1.25rem; }
-    #status.good { color: #FFD84D; font-weight: 700; }
-    #status.bad { color: #FF9AA2; }
+    #puzzle-count {
+      margin: 0;
+      color: #B9A5E3;
+    }
+
+    #puzzle-title {
+      font-size: 2rem;
+      margin: 0.25rem 0 0.75rem;
+    }
+
+    #status {
+      min-height: 3em;
+      margin: 0 0 1rem;
+    }
+
+    #status.good {
+      color: #FFD84D;
+      font-weight: 700;
+    }
+
+    #status.bad {
+      color: #FF9AA2;
+    }
 
     .instructions {
       margin-bottom: 1.5rem;
@@ -69,8 +71,6 @@
       font-size: 0.95rem;
       line-height: 1.5;
     }
-    .instructions p { margin: 0 0 0.5rem; }
-    .instructions p:last-child { margin-bottom: 0; }
 
     .sq {
       position: relative;
@@ -80,13 +80,20 @@
       border: 0;
       padding: 0;
       font: inherit;
-      font-size: min(9vw, 56px);
+      font-size: clamp(20px, 5vw, 56px);
       line-height: 1;
       cursor: pointer;
       user-select: none;
     }
-    .sq.light { background: #B9A5E3; }
-    .sq.dark { background: #6B4BA3; }
+
+    .sq.light {
+      background: #B9A5E3;
+    }
+
+    .sq.dark {
+      background: #6B4BA3;
+    }
+
     .sq.last::before {
       content: "";
       position: absolute;
@@ -94,19 +101,37 @@
       background: rgba(255, 216, 77, 0.35);
       pointer-events: none;
     }
-    .sq.selected, .sq.hint { box-shadow: inset 0 0 0 4px #FFD84D; }
-    .piece { position: relative; width: 88%; height: 88%; display: flex; align-items: center; justify-content: center; }
-    .piece img { width: 100%; height: 100%; display: block; pointer-events: none; }
-    .piece.w {
-      color: #FFF6D6;
-      text-shadow: 0 0 3px #1E1033, 0 0 3px #1E1033, 0 0 3px #1E1033;
-    }
-    .piece.b {
-      color: #1E1033;
-      text-shadow: 0 0 3px #F5F0FA, 0 0 3px #F5F0FA;
+
+    .sq.selected,
+    .sq.hint {
+      box-shadow: inset 0 0 0 4px #FFD84D;
     }
 
-    .controls { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: flex-start; }
+    .piece {
+      position: relative;
+      z-index: 1;
+      font-family: "DejaVu Sans", "Segoe UI Symbol", sans-serif;
+    }
+
+    .piece.w {
+      color: #FFF6D6;
+      text-shadow:
+        0 2px 2px #1E1033,
+        1px 0 #1E1033,
+        -1px 0 #1E1033;
+    }
+
+    .piece.b {
+      color: #1E1033;
+      text-shadow: 0 1px 1px #F5F0FA;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
     .btn {
       font: inherit;
       font-weight: 700;
@@ -117,27 +142,60 @@
       color: #F5F0FA;
       cursor: pointer;
     }
-    .btn:hover { background: #2E1A4A; }
-    .btn.primary { background: #FFD84D; border-color: #FFD84D; color: #1E1033; }
-    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-    .btn:focus-visible, .sq:focus-visible { outline: 3px solid #FFD84D; outline-offset: 2px; }
-    .sq:focus-visible { outline-offset: -3px; }
 
-    @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
-    .board.shake { animation: shake 0.3s; }
-    @media (prefers-reduced-motion: reduce) { .board.shake { animation: none; } }
+    .btn:hover:not(:disabled) {
+      background: #2E1A4A;
+    }
 
-    @media (max-width: 850px) {
+    .btn.primary {
+      background: #FFD84D;
+      border-color: #FFD84D;
+      color: #1E1033;
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn:focus-visible,
+    .sq:focus-visible {
+      outline: 3px solid #FFD84D;
+      outline-offset: -3px;
+    }
+
+    @keyframes shake {
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+
+    .board.shake {
+      animation: shake 0.3s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .board.shake { animation: none; }
+    }
+
+    @media (max-width: 1000px) {
       .puzzle-wrap {
         flex-direction: column;
         align-items: center;
       }
-      .board, .puzzle-panel {
-        width: min(92vw, 520px);
+
+      .board {
+        width: min(100%, 560px);
+        flex: none;
+      }
+
+      .puzzle-panel {
+        width: min(100%, 560px);
+        flex: none;
       }
     }
   </style>
 </head>
+
 <body class="home">
   <div class="layout">
     <aside class="sidebar">
@@ -146,33 +204,50 @@
       <nav class="tabs" aria-label="Main">
         <a class="tab" href="index.html">Home</a>
         <a class="tab" href="puzzles.html" aria-current="page">Puzzles</a>
-        <span class="tab disabled" aria-disabled="true">Courses <small>Soon</small></span>
+        <span class="tab disabled" aria-disabled="true">
+          Courses <small>Soon</small>
+        </span>
       </nav>
 
       <div class="side-coins" aria-live="polite">
         <span class="coin-dot"></span>
-        <span><span id="coin-count">0</span> mooncoins</span>
+        <span>
+          <span id="coin-count">0</span> mooncoins
+        </span>
       </div>
     </aside>
 
     <main class="content">
       <div class="puzzle-wrap">
-        <div id="board" class="board" aria-label="Chess board"></div>
+
+        <div id="board" class="board"
+             role="group"
+             aria-label="Chess board"></div>
 
         <div class="puzzle-panel">
           <p id="puzzle-count"></p>
           <h1 id="puzzle-title"></h1>
-          <p id="status"></p>
+          <p id="status" role="status" aria-live="polite"></p>
 
           <div class="instructions">
             <p><strong>How to play:</strong></p>
-            <p>Click a piece to select it, then click the target square to find the best move and earn mooncoins.</p>
+            <p>
+              Click a piece, then its destination square
+              to find the best move. Each puzzle earns
+              10 mooncoins the first time you solve it.
+            </p>
           </div>
 
           <div class="controls">
-            <button type="button" id="hint-btn" class="btn">Hint</button>
-            <button type="button" id="restart-btn" class="btn">Restart</button>
-            <button type="button" id="next-btn" class="btn">Next puzzle</button>
+            <button type="button" id="hint-btn" class="btn">
+              Hint
+            </button>
+            <button type="button" id="restart-btn" class="btn">
+              Restart
+            </button>
+            <button type="button" id="next-btn" class="btn">
+              Next puzzle
+            </button>
           </div>
         </div>
       </div>
@@ -180,111 +255,62 @@
   </div>
 
   <script>
-    const FILES = "abcdefgh";
-    const GLYPH = { k: "\u265A", q: "\u265B", r: "\u265C", b: "\u265D", n: "\u265E", p: "\u265F\uFE0E" };
-    const PIECE_NAMES = { k: "king", q: "queen", r: "rook", b: "bishop", n: "knight", p: "pawn" };
+    "use strict";
 
+    const FILES = "abcdefgh";
+
+    const PIECE_NAMES = {
+      k: "king",
+      q: "queen",
+      r: "rook",
+      b: "bishop",
+      n: "knight",
+      p: "pawn"
+    };
+
+    const GLYPHS = {
+      K: "♔", Q: "♕", R: "♖",
+      B: "♗", N: "♘", P: "♙",
+      k: "♚", q: "♛", r: "♜",
+      b: "♝", n: "♞", p: "♟"
+    };
+
+    // Single-move puzzles with predefined solutions.
     const PUZZLES = [
       {
         id: "scholars-mate",
-        title: "Scholar’s mate",
+        title: "Scholar's mate",
         fen: "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w - - 4 4",
-        moves: ["h5f7"]
+        move: "h5f7"
       },
       {
         id: "back-rank-mate",
         title: "Back-rank mate",
         fen: "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
-        moves: ["a1a8"]
+        move: "a1a8"
       },
       {
         id: "fools-mate",
-        title: "Fool’s mate",
+        title: "Fool's mate",
         fen: "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b - - 0 2",
-        moves: ["d8h4"]
+        move: "d8h4"
       },
       {
         id: "smothered-mate",
         title: "Smothered mate",
         fen: "6rk/6pp/8/6N1/8/8/8/6K1 w - - 0 1",
-        moves: ["g5f7"]
+        move: "g5f7"
       },
       {
-        id: "legals-mate",
-        title: "Légal’s mate",
-        fen: "rn1qkbnr/ppp2p1p/3p2p1/4N3/2B1P3/2N5/PPPP1PPP/R1BbK2R w - - 0 6",
-        moves: ["c4f7", "e8e7", "c3d5"]
+        id: "queen-mate",
+        title: "Queen and king mate",
+        fen: "7k/5K2/6Q1/8/8/8/8/8 w - - 0 1",
+        move: "g6g7"
       }
     ];
 
-    function sqIndex(name) { return (8 - Number(name.charAt(1))) * 8 + FILES.indexOf(name.charAt(0)); }
-    function sqName(i) { return FILES.charAt(i % 8) + (8 - Math.floor(i / 8)); }
-    function isWhite(piece) { return piece !== "" && piece === piece.toUpperCase(); }
-
-    function parseFen(fen) {
-      const parts = fen.split(" ");
-      const board = new Array();
-      for (const ch of parts.at(0).replace(/\//g, "")) {
-        if (/\d/.test(ch)) {
-          for (let n = 0; n < Number(ch); n++) board.push("");
-        } else {
-          board.push(ch);
-        }
-      }
-      return { board: board, turn: parts.at(1) };
-    }
-
-    function applyMove(board, uci) {
-      const next = board.slice();
-      const from = sqIndex(uci.slice(0, 2));
-      const to = sqIndex(uci.slice(2, 4));
-      const piece = next.at(from);
-      const type = piece.toLowerCase();
-      const fromRow = Math.floor(from / 8);
-      const toRow = Math.floor(to / 8);
-      const fromCol = from % 8;
-      const toCol = to % 8;
-
-      if (type === "p" && fromCol !== toCol && next.at(to) === "") next[fromRow * 8 + toCol] = "";
-
-      if (type === "k" && Math.abs(toCol - fromCol) === 2) {
-        const rookFrom = fromRow * 8 + (toCol > fromCol ? 7 : 0);
-        const rookTo = fromRow * 8 + (toCol > fromCol ? 5 : 3);
-        next[rookTo] = next.at(rookFrom);
-        next[rookFrom] = "";
-      }
-
-      next[to] = piece;
-      next[from] = "";
-
-      if (type === "p" && (toRow === 0 || toRow === 7)) {
-        const promo = uci.charAt(4) || "q";
-        next[to] = isWhite(piece) ? promo.toUpperCase() : promo.toLowerCase();
-      }
-      return next;
-    }
-
-    function acceptedMoves(step) { return Array.isArray(step) ? step : new Array(step); }
-    function isCorrect(step, attempt) {
-      return acceptedMoves(step).some(function (m) { return m.slice(0, 4) === attempt; });
-    }
     const COIN_KEY = "moonchess.coins";
     const SOLVED_KEY = "moonchess.solved";
-
-    function readStore(key, fallback) {
-      try {
-        const value = localStorage.getItem(key);
-        return value === null ? fallback : JSON.parse(value);
-      } catch (e) {
-        return fallback;
-      }
-    }
-
-    function writeStore(key, value) {
-      try {
-        localStorage.setItem(key, JSON.stringify(value));
-      } catch (e) {}
-    }
 
     const boardEl = document.getElementById("board");
     const countEl = document.getElementById("puzzle-count");
@@ -295,92 +321,198 @@
     const restartBtn = document.getElementById("restart-btn");
     const nextBtn = document.getElementById("next-btn");
 
-    let coins = readStore(COIN_KEY, 0);
-    let solvedIds = readStore(SOLVED_KEY, new Array());
-    let currentIdx = 0;
-    let state = { board: new Array(), turn: "w", moveStep: 0, selected: null, hintSq: null, lastMove: new Array(), solved: false };
-
-    function updateCoins(delta) {
-      if (delta) {
-        coins += delta;
-        writeStore(COIN_KEY, coins);
+    function readStore(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw === null ? fallback : JSON.parse(raw);
+      } catch {
+        return fallback;
       }
+    }
+
+    function writeStore(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {}
+    }
+
+    let coins = readStore(COIN_KEY, 0);
+
+    if (!Number.isFinite(coins) || coins < 0) {
+      coins = 0;
+    }
+
+    let solvedIds = readStore(SOLVED_KEY, []);
+
+    if (!Array.isArray(solvedIds)) {
+      solvedIds = [];
+    }
+
+    let currentIdx = 0;
+    let state;
+
+    function sqIndex(name) {
+      return (8 - Number(name[1])) * 8 +
+        FILES.indexOf(name[0]);
+    }
+
+    function sqName(i) {
+      return FILES[i % 8] +
+        (8 - Math.floor(i / 8));
+    }
+
+    function isWhite(piece) {
+      return piece !== "" &&
+        piece === piece.toUpperCase();
+    }
+
+    function parseFen(fen) {
+      const [placement, turn] = fen.split(" ");
+      const board = [];
+
+      for (const ch of placement.replace(/\//g, "")) {
+        if (/^[1-8]$/.test(ch)) {
+          board.push(...Array(Number(ch)).fill(""));
+        } else {
+          board.push(ch);
+        }
+      }
+
+      if (board.length !== 64) {
+        throw new Error("Invalid puzzle position");
+      }
+
+      return { board, turn };
+    }
+
+    function applyMove(board, uci) {
+      const next = board.slice();
+
+      const from = sqIndex(uci.slice(0, 2));
+      const to = sqIndex(uci.slice(2, 4));
+
+      next[to] = next[from];
+      next[from] = "";
+
+      return next;
+    }
+
+    function setStatus(message, type = "") {
+      statusEl.textContent = message;
+      statusEl.className = type;
+    }
+
+    function updateCoins() {
       coinEl.textContent = coins;
     }
 
-    function setStatus(text, type) {
-      statusEl.textContent = text;
-      statusEl.className = type || "";
-    }
-
     function loadPuzzle(idx) {
-      currentIdx = idx % PUZZLES.length;
-      const p = PUZZLES.at(currentIdx);
-      const parsed = parseFen(p.fen);
+      currentIdx =
+        ((idx % PUZZLES.length) + PUZZLES.length) %
+        PUZZLES.length;
+
+      const puzzle = PUZZLES[currentIdx];
+      const parsed = parseFen(puzzle.fen);
+
       state = {
         board: parsed.board,
         turn: parsed.turn,
-        moveStep: 0,
         selected: null,
         hintSq: null,
-        lastMove: new Array(),
+        lastMove: [],
         solved: false
       };
 
-      countEl.textContent = "Puzzle " + (currentIdx + 1) + " of " + PUZZLES.length;
-      titleEl.textContent = p.title;
-      setStatus(parsed.turn === "w" ? "White to move." : "Black to move.");
+      countEl.textContent =
+        `Puzzle ${currentIdx + 1} of ${PUZZLES.length}`;
+
+      titleEl.textContent = puzzle.title;
+
+      setStatus(
+        parsed.turn === "w"
+          ? "White to move."
+          : "Black to move."
+      );
+
       nextBtn.classList.remove("primary");
       hintBtn.disabled = false;
+
       renderBoard();
     }
 
-        function renderBoard() {
-      boardEl.innerHTML = "";
+    function renderBoard() {
+      boardEl.replaceChildren();
+
       const flipped = state.turn === "b";
+
       for (let step = 0; step < 64; step++) {
         const i = flipped ? 63 - step : step;
         const row = Math.floor(i / 8);
         const col = i % 8;
-        const isLight = (row + col) % 2 === 0;
-        const sq = document.createElement("button");
-        sq.type = "button";
-        sq.className = "sq " + (isLight ? "light" : "dark");
-        if (state.selected === i) sq.classList.add("selected");
-        if (state.hintSq === i) sq.classList.add("hint");
-        if (state.lastMove.includes(i)) sq.classList.add("last");
 
-        const piece = state.board.at(i);
-        const name = sqName(i);
-        sq.setAttribute("aria-label", piece
-          ? name + " " + (isWhite(piece) ? "white" : "black") + " " + PIECE_NAMES[piece.toLowerCase()]
-          : name
-        );
+        const square = document.createElement("button");
+        square.type = "button";
 
-             if (piece) {
-          const color = isWhite(piece) ? "ivory" : "charcoal";
-          const typeName = PIECE_NAMES[piece.toLowerCase()];
-          const span = document.createElement("span");
-          span.className = "piece " + (isWhite(piece) ? "w" : "b");
+        square.className =
+          "sq " +
+          ((row + col) % 2 === 0 ? "light" : "dark");
 
-          const img = document.createElement("img");
-          img.src = color + "-" + typeName + ".svg";
-          img.alt = "";
-          span.appendChild(img);
-
-          sq.appendChild(span);
+        if (state.selected === i) {
+          square.classList.add("selected");
         }
 
+        if (state.hintSq === i) {
+          square.classList.add("hint");
+        }
+
+        if (state.lastMove.includes(i)) {
+          square.classList.add("last");
+        }
+
+        const piece = state.board[i];
+
+        square.setAttribute(
+          "aria-label",
+          piece
+            ? `${sqName(i)} ${isWhite(piece) ? "white" : "black"} ${PIECE_NAMES[piece.toLowerCase()]}`
+            : sqName(i)
+        );
+
+        if (piece) {
+          const span = document.createElement("span");
+
+          span.className =
+            "piece " + (isWhite(piece) ? "w" : "b");
+
+          span.textContent = GLYPHS[piece];
+          span.setAttribute("aria-hidden", "true");
+
+          square.appendChild(span);
+        }
+
+        square.addEventListener("click", () => {
+          handleSquareClick(i);
+        });
+
+        boardEl.appendChild(square);
+      }
+    }
 
     function handleSquareClick(idx) {
       if (state.solved) return;
-      const p = PUZZLES.at(currentIdx);
-      const piece = state.board.at(idx);
-      const isPlayerPiece = piece !== "" && (state.turn === "w" ? isWhite(piece) : !isWhite(piece));
+
+      const piece = state.board[idx];
+
+      const isPlayerPiece =
+        piece !== "" &&
+        (state.turn === "w"
+          ? isWhite(piece)
+          : !isWhite(piece));
 
       if (state.selected === null) {
         if (isPlayerPiece) {
           state.selected = idx;
+          state.hintSq = null;
           renderBoard();
         }
         return;
@@ -398,64 +530,70 @@
         return;
       }
 
-      const attempt = sqName(state.selected) + sqName(idx);
-      const expectedStep = p.moves.at(state.moveStep);
+      const attempt =
+        sqName(state.selected) + sqName(idx);
 
-      if (isCorrect(expectedStep, attempt)) {
+      const puzzle = PUZZLES[currentIdx];
+
+      if (attempt === puzzle.move) {
         state.board = applyMove(state.board, attempt);
-        state.lastMove = new Array(state.selected, idx);
+
+        state.lastMove = [state.selected, idx];
         state.selected = null;
         state.hintSq = null;
-        state.moveStep++;
+        state.solved = true;
 
-        if (state.moveStep >= p.moves.length) {
-          state.solved = true;
-          hintBtn.disabled = true;
-          nextBtn.classList.add("primary");
-          if (!solvedIds.includes(p.id)) {
-            solvedIds.push(p.id);
-            writeStore(SOLVED_KEY, solvedIds);
-            updateCoins(10);
-            setStatus("Solved! +10 mooncoins.", "good");
-          } else {
-            setStatus("Solved!", "good");
-          }
-          renderBoard();
+        hintBtn.disabled = true;
+        nextBtn.classList.add("primary");
+
+        if (!solvedIds.includes(puzzle.id)) {
+          solvedIds.push(puzzle.id);
+          writeStore(SOLVED_KEY, solvedIds);
+
+          coins += 10;
+          writeStore(COIN_KEY, coins);
+          updateCoins();
+
+          setStatus("Solved! +10 mooncoins.", "good");
         } else {
-          setStatus("Good move! Keep going...", "good");
-          renderBoard();
-          const reply = acceptedMoves(p.moves.at(state.moveStep)).at(0);
-          setTimeout(function () {
-            state.board = applyMove(state.board, reply);
-            state.lastMove = new Array(sqIndex(reply.slice(0, 2)), sqIndex(reply.slice(2, 4)));
-            state.moveStep++;
-            setStatus("Your turn.");
-            renderBoard();
-          }, 400);
+          setStatus(
+            "Solved! You already earned coins for this puzzle.",
+            "good"
+          );
         }
       } else {
         state.selected = null;
+
         setStatus("Not quite — try again!", "bad");
+
         boardEl.classList.remove("shake");
         void boardEl.offsetWidth;
         boardEl.classList.add("shake");
-        renderBoard();
       }
+
+      renderBoard();
     }
 
-    hintBtn.addEventListener("click", function () {
+    hintBtn.addEventListener("click", () => {
       if (state.solved) return;
-      const p = PUZZLES.at(currentIdx);
-      const move = acceptedMoves(p.moves.at(state.moveStep)).at(0);
+
+      const move = PUZZLES[currentIdx].move;
+
       state.hintSq = sqIndex(move.slice(0, 2));
+
       setStatus("Hint: Move the highlighted piece.");
       renderBoard();
     });
 
-    restartBtn.addEventListener("click", function () { loadPuzzle(currentIdx); });
-    nextBtn.addEventListener("click", function () { loadPuzzle(currentIdx + 1); });
+    restartBtn.addEventListener("click", () => {
+      loadPuzzle(currentIdx);
+    });
 
-    updateCoins(0);
+    nextBtn.addEventListener("click", () => {
+      loadPuzzle(currentIdx + 1);
+    });
+
+    updateCoins();
     loadPuzzle(0);
   </script>
 </body>
