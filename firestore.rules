@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['username','email','coins','solved','rating','createdAt'])
+        && request.resource.data.coins == 0
+        && request.resource.data.rating == 1000
+        && request.resource.data.solved == []
+        && request.resource.data.username is string
+        && request.resource.data.username.size() >= 3
+        && request.resource.data.username.size() <= 20
+        && request.resource.data.email == request.auth.token.email;
+      allow update: if request.auth != null && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coins','solved','rating'])
+        && request.resource.data.coins == resource.data.coins + 10
+        && request.resource.data.solved is list
+        && resource.data.solved is list
+        && request.resource.data.solved.size() == resource.data.solved.size() + 1
+        && request.resource.data.solved.hasAll(resource.data.solved)
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= (resource.data.get('rating',1000) + 1)
+        && request.resource.data.rating <= (resource.data.get('rating',1000) + 5);
+      allow delete: if false;
+    }
+  }
+}

@@ -311,6 +311,7 @@
         <div class="puzzle-panel">
           <p id="account-state" style="color:#FFD84D;font-size:.9rem;margin:0 0 .5rem">Checking account...</p>
           <p id="puzzle-count"></p>
+          <p id="rating-info" style="color:#FFD84D;font-size:.95rem"></p>
           <h1 id="puzzle-title"></h1>
           <p id="status" role="status" aria-live="polite"></p>
 
@@ -409,9 +410,11 @@ function playSound(kind) {
 
 
 let coins = 0;
+let playerRating = 1000;
 const solvedSet = new Set();
 function applyProfile(data) {
   coins = Math.max(0, Number(data?.coins) || 0);
+  playerRating = Number.isFinite(data?.rating) ? data.rating : 1000;
   solvedSet.clear();
   for (const id of Array.isArray(data?.solved) ? data.solved : []) solvedSet.add(id);
   updateCoins();
@@ -421,6 +424,7 @@ function enterSession(user) {
   currentUser = user;
   sessionReady = true;
   coins = 0;
+  playerRating = 1000;
   solvedSet.clear();
   updateCoins();
   if (user) {
@@ -431,6 +435,7 @@ function enterSession(user) {
     document.getElementById("account-state").textContent = "Playing as Guest · No mooncoins";
   }
   if (!puzzle && pools.length) loadPuzzle(nextRandomPuzzle());
+  updateRatingInfo();
 }
 const pools = [
   ...MOONCHESS_MATEIN1.map(p=>({...p, mate:1})),
@@ -461,8 +466,22 @@ function shuffle(a) {
   return a;
 }
 function nextRandomPuzzle() {
-  if (!bag.length) bag=shuffle(pools.slice());
-  return bag.pop();
+  const unsolved = pools.filter(p => !solvedSet.has('lichess:' + p.id));
+  const source = unsolved.length ? unsolved : pools;
+  if (!source.length) return null;
+  // Start at ±50; expand only if no puzzle exists in that band.
+  let distance = 50;
+  let choices = source.filter(p => Math.abs(p.rating - playerRating) <= distance);
+  while (!choices.length && distance < 3000) {
+    distance += 50;
+    choices = source.filter(p => Math.abs(p.rating - playerRating) <= distance);
+  }
+  return choices[Math.floor(Math.random() * choices.length)] || source[0];
+}
+function updateRatingInfo() {
+  const el = document.getElementById('rating-info');
+  if (!el) return;
+  el.textContent = 'Your puzzle rating: ' + playerRating + (puzzle ? ' · Puzzle rating: ' + puzzle.rating : '');
 }
 function pieceAt(index) {
   const piece=chess.get(sqName(index));
@@ -484,7 +503,8 @@ function loadPuzzle(newPuzzle) {
   playerColor=chess.turn();
   step=0; selected=null; hintSquare=null; lastMove=[]; solved=false; thinking=false;
   titleEl.textContent="Mate in " + puzzle.mate;
-  countEl.textContent=pools.length + " puzzles · Random order";
+  countEl.textContent=pools.length + " puzzles · Matched to your rating";
+  updateRatingInfo();
   nextBtn.classList.remove("primary");
   hintBtn.disabled=false;
   showTurn();
@@ -562,8 +582,8 @@ async function completePuzzle() {
   rewardBusy = true;
   setStatus("Checkmate! Saving your reward...", "good");
   try {
-    const awarded = await awardPuzzle(rewardUser, puzzle.id);
-    setStatus(awarded ? "Checkmate! +10 mooncoins." :
+    const awarded = await awardPuzzle(rewardUser, puzzle.id, puzzle.rating);
+    setStatus(awarded ? `Checkmate! +10 mooncoins, +${awarded} rating.` :
       "Checkmate! You've already earned coins for this puzzle.", "good");
   } catch (error) {
     console.error("Reward could not be saved", error);

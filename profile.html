@@ -66,6 +66,7 @@
 <p id="message" class="notice" role="status">Loading your saved progress...</p>
 <section id="stats-panel" role="tabpanel" aria-labelledby="stats-tab">
 <div class="stats-grid">
+<div class="profile-card"><span class="stat-value" id="player-rating">1000</span><span class="stat-label">Puzzle rating</span></div>
 <div class="profile-card"><span class="stat-value" id="total-coins">0</span><span class="stat-label">Mooncoins</span></div>
 <div class="profile-card"><span class="stat-value" id="total-solved">0</span><span class="stat-label">Unique puzzles solved</span></div>
 <div class="profile-card"><span class="stat-value" id="unlocked-count">0 / 24</span><span class="stat-label">Achievements unlocked</span></div>
@@ -103,6 +104,7 @@ function render(profile){
  const coins=Math.max(0,Number(profile?.coins)||0);
  const counts=groups.map(g=>[...g.ids].filter(id=>solved.has(id)).length);
  $('side-coins').textContent=coins;
+ $('player-rating').textContent=Number.isFinite(profile?.rating)?profile.rating:1000;
  $('total-coins').textContent=coins;
  $('total-solved').textContent=counts[0];
  $('progress-list').replaceChildren();
