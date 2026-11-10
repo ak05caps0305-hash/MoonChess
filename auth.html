@@ -227,13 +227,7 @@ $('auth-form').addEventListener('submit', async event => {
   }
 });
 
-if (auth) {
-  onAuthStateChanged(auth, user => {
-    if (user && !sessionStorage.getItem('moonchess.guest')) {
-      location.replace('index.html');
-    }
-  });
-}
+
 </script>
 </body>
 </html>
