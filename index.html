@@ -46,6 +46,7 @@
     <nav class="tabs" aria-label="Main">
       <a class="tab" href="index.html" aria-current="page">Home</a>
       <a class="tab" href="puzzles.html">Puzzles</a>
+      <a class="tab" href="profile.html">Profile</a>
       <span class="tab disabled" aria-disabled="true">Courses <small>Soon</small></span>
     </nav>
     <div class="side-coins"><span class="coin-dot"></span><span><span id="side-coins">0</span> mooncoins</span></div>
@@ -75,7 +76,7 @@
     <section class="home-section" aria-labelledby="progress-heading">
       <div class="section-heading"><div><p class="eyebrow">YOUR JOURNEY</p><h2 id="progress-heading">Your progress</h2></div></div>
       <div class="stats-grid"><div class="stat-card"><span class="stat-icon">◈</span><strong id="home-coins">0</strong><span>Mooncoins earned</span></div><div class="stat-card"><span class="stat-icon">✓</span><strong id="home-solved">0</strong><span>Unique puzzles solved</span></div><div class="stat-card"><span class="stat-icon">✦</span><strong>+10</strong><span>Mooncoins per new solve</span></div></div>
-      <p class="section-footnote">Progress is saved in this browser.</p>
+      <p class="section-footnote">Registered players’ progress is saved to their accounts. Guests do not earn mooncoins.</p>
     </section>
 
     <section class="home-section how-section" id="how-it-works" aria-labelledby="how-heading"><p class="eyebrow">SIMPLE TO START</p><h2 id="how-heading">How Moonchess works</h2><div class="steps"><div class="step"><span class="step-number">01</span><h3>Solve</h3><p>Drag or click pieces to find the correct checkmate sequence.</p></div><div class="step"><span class="step-number">02</span><h3>Earn</h3><p>Get 10 mooncoins the first time you solve each puzzle.</p></div><div class="step"><span class="step-number">03</span><h3>Improve</h3><p>Practice mate in 1, 2, and 3 as you build your skills.</p></div></div></section>
@@ -119,21 +120,7 @@ requireSession(user => {
 </script>
 
 
-<script type="module">
-import { auth, isGuest } from './account.js';
-import { onAuthStateChanged } from
-  'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 
-document.body.style.visibility = 'hidden';
-
-onAuthStateChanged(auth, user => {
-  if (user || isGuest()) {
-    document.body.style.visibility = 'visible';
-  } else {
-    window.location.replace('auth.html');
-  }
-});
-</script>
 
 </body>
 </html>
