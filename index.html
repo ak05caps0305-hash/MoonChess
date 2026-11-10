@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,71 +9,92 @@
     <link rel="icon" type="image/png" href="Untitled Design.png">
   <meta name="description" content="Solve chess puzzles and earn mooncoins to unlock chess courses.">
   <link rel="stylesheet" href="style.css">
+
+<style>
+  .moon-home { width: 100%; max-width: 1160px; box-sizing: border-box; padding-bottom: 4rem; }
+  .moon-home * { box-sizing: border-box; }
+  .moon-home h1, .moon-home h2, .moon-home h3, .moon-home p { margin-top: 0; }
+  .eyebrow { color: #FFD84D; font-size: .75rem; letter-spacing: .16em; font-weight: 800; margin-bottom: .9rem; }
+  .moon-hero { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(220px, .8fr); align-items: center; gap: 2rem; padding: 2.7rem; border: 1px solid #59427d; border-radius: 22px; background: radial-gradient(circle at 88% 15%, #48316b 0, transparent 45%), linear-gradient(135deg,#2a1745,#1e1033); overflow: hidden; }
+  .moon-hero h1 { font-size: clamp(2.2rem,4.5vw,4rem); line-height: 1.12; letter-spacing: -.04em; max-width: 660px; margin-bottom: 1rem; }
+  .hero-subtitle { color: #e2d9f3; line-height: 1.65; max-width: 540px; font-size: 1.05rem; }
+  .hero-actions { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; margin-top: 1.5rem; }
+  .moon-home .button { display: inline-block; text-decoration: none; background: #FFD84D; color: #1e1033; border-radius: 10px; padding: .9rem 1.3rem; font-weight: 800; }
+  .moon-home .button:hover { background: #ffe681; }
+  .secondary-link { color: #f5f0fa; text-decoration: underline; text-underline-offset: 5px; }
+  .hero-note { color: #b9a5e3; font-size: .85rem; margin: 1.25rem 0 0; }
+  .hero-art { min-height: 280px; position: relative; display: grid; place-items: center; }
+  .moon-orbit { position: absolute; width: 235px; height: 235px; border: 1px solid #6e578d; border-radius: 50%; }
+  .moon-shape { position: absolute; width: 165px; height: 165px; border-radius: 50%; background: #FFD84D; top: 34px; left: 34px; box-shadow: 0 0 65px #ffd84d30; }
+  .moon-shape:after { content: ''; position: absolute; width: 165px; height: 165px; border-radius: 50%; background: #342050; top: -25px; left: 45px; }
+  .orbit-star { position: absolute; color: #FFD84D; font-size: 1.7rem; }.s1{top: -20px;left: 30px}.s2{bottom: 12px;right: -12px}.s3{bottom: -20px;left: 35px}
+  .hero-knight { position: relative; font-size: 8rem; line-height: 1; color: #fff4d6; text-shadow: 0 8px 20px #120921; transform: translateY(25px); }
+  .home-section { margin-top: 3.2rem; }.section-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: end; margin-bottom: 1.2rem; }.section-heading h2,.how-section h2 { font-size: clamp(1.65rem,3vw,2.25rem); margin-bottom: 0; }.section-aside,.section-footnote { color: #b9a5e3; font-size: .85rem; }.section-footnote { margin: .85rem 0 0; }
+  .challenge-grid,.stats-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; }
+  .challenge-card { background: #2e1a4a; border: 1px solid #59427d; border-radius: 16px; padding: 1.45rem; display: flex; flex-direction: column; min-height: 240px; }.challenge-card:hover { border-color: #FFD84D; }.card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.4rem; }.difficulty-number { color: #FFD84D; font-weight: 800; font-size: .8rem; letter-spacing: .12em; }.difficulty-icon { font-size: 2rem; color: #b9a5e3; }.challenge-card h3 { font-size: 1.35rem; margin-bottom: .6rem; }.challenge-card p { color: #e2d9f3; line-height: 1.5; font-size: .95rem; }.challenge-card a { margin-top: auto; color: #FFD84D; font-weight: 700; text-decoration: none; }.challenge-card a:hover { text-decoration: underline; }
+  .stat-card { background: #291743; border: 1px solid #59427d; border-radius: 14px; padding: 1.5rem; display: flex; flex-direction: column; gap: .45rem; }.stat-card strong { font-size: 2rem; color: #FFD84D; }.stat-card>span:last-child { color: #e2d9f3; font-size: .9rem; }.stat-icon { color: #b9a5e3; }
+  .how-section { padding: 2rem; background: #291743; border: 1px solid #59427d; border-radius: 18px; }.how-section .steps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1.5rem; margin-top: 1.5rem; }.how-section .step { background: none; border: none; padding: 0; }.step-number { color: #FFD84D; font-size: .8rem; font-weight: 800; }.how-section h3 { margin: .65rem 0; }.how-section p:not(.eyebrow) { color: #e2d9f3; line-height: 1.5; }
+  .closing-cta { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; margin-top: 2.5rem; padding: 2rem; border: 1px solid #59427d; border-radius: 16px; }.closing-cta h2 { margin-bottom: .5rem; }.closing-cta p { color: #e2d9f3; margin: 0; }
+  @media (max-width: 900px) { .moon-hero { grid-template-columns: 1fr; }.hero-art { display: none; } }
+  @media (max-width: 650px) { .moon-hero { padding: 1.5rem; }.challenge-grid,.stats-grid,.how-section .steps { grid-template-columns: 1fr; }.challenge-card { min-height: 190px; }.section-heading { align-items: start; flex-direction: column; }.closing-cta { flex-direction: column; align-items: start; }.how-section { padding: 1.4rem; } }
+</style>
 </head>
 <body class="home">
-  <div class="layout">
-    <aside class="sidebar">
-      <a class="logo" href="index.html">Moonchess</a>
-
-      <nav class="tabs" aria-label="Main">
-        <a class="tab" href="index.html" aria-current="page">Home</a>
-        <a class="tab" href="puzzles.html">Puzzles</a>
-        <span class="tab disabled" aria-disabled="true">
-          Courses <small>Soon</small>
-        </span>
-      </nav>
-
-      <div class="side-coins">
-        <span class="coin-dot"></span>
-        <span><span id="side-coins">0</span> mooncoins</span>
+<div class="layout">
+  <aside class="sidebar">
+    <a class="logo" href="index.html">Moonchess</a>
+    <nav class="tabs" aria-label="Main">
+      <a class="tab" href="index.html" aria-current="page">Home</a>
+      <a class="tab" href="puzzles.html">Puzzles</a>
+      <span class="tab disabled" aria-disabled="true">Courses <small>Soon</small></span>
+    </nav>
+    <div class="side-coins"><span class="coin-dot"></span><span><span id="side-coins">0</span> mooncoins</span></div>
+  </aside>
+  <main class="content moon-home">
+    <section class="moon-hero" aria-labelledby="hero-heading">
+      <div class="hero-copy">
+        <p class="eyebrow">WELCOME TO MOONCHESS</p>
+        <h1 id="hero-heading">Your next great move starts here.</h1>
+        <p class="hero-subtitle">Solve checkmate puzzles, sharpen your tactics, and collect mooncoins as you improve.</p>
+        <div class="hero-actions"><a class="button" href="puzzles.html">Play free puzzles →</a><a class="secondary-link" href="#how-it-works">How it works</a></div>
+        <p class="hero-note">Free to play · Mate in 1, 2, and 3</p>
       </div>
-    </aside>
+      <div class="hero-art" aria-hidden="true"><div class="moon-orbit"><span class="moon-shape"></span><span class="orbit-star s1">✦</span><span class="orbit-star s2">✧</span><span class="orbit-star s3">✦</span></div><span class="hero-knight">♞</span></div>
+    </section>
 
-    <main class="content">
-      <h1>Earn your mastery.</h1>
-      <p>
-        Solve puzzles. Play games. Collect mooncoins.
-        Spend them on chess courses.
-      </p>
+    <section class="home-section" aria-labelledby="challenge-heading">
+      <div class="section-heading"><div><p class="eyebrow">TRAIN YOUR TACTICS</p><h2 id="challenge-heading">Find the checkmate</h2></div><span class="section-aside">Random puzzles every round</span></div>
+      <div class="challenge-grid">
+        <article class="challenge-card"><div class="card-top"><span class="difficulty-number">01</span><span class="difficulty-icon">♜</span></div><h3>Mate in 1</h3><p>Spot the winning move and finish the game.</p><a href="puzzles.html">Start solving <span aria-hidden="true">→</span></a></article>
+        <article class="challenge-card"><div class="card-top"><span class="difficulty-number">02</span><span class="difficulty-icon">♝</span></div><h3>Mate in 2</h3><p>Think ahead and find the forcing sequence.</p><a href="puzzles.html">Start solving <span aria-hidden="true">→</span></a></article>
+        <article class="challenge-card"><div class="card-top"><span class="difficulty-number">03</span><span class="difficulty-icon">♛</span></div><h3>Mate in 3</h3><p>Plan your attack several moves ahead.</p><a href="puzzles.html">Start solving <span aria-hidden="true">→</span></a></article>
+      </div>
+      <p class="section-footnote">All three cards open the same randomly mixed puzzle collection.</p>
+    </section>
 
-      <a class="button" href="puzzles.html">
-        Start playing free
-      </a>
+    <section class="home-section" aria-labelledby="progress-heading">
+      <div class="section-heading"><div><p class="eyebrow">YOUR JOURNEY</p><h2 id="progress-heading">Your progress</h2></div></div>
+      <div class="stats-grid"><div class="stat-card"><span class="stat-icon">◈</span><strong id="home-coins">0</strong><span>Mooncoins earned</span></div><div class="stat-card"><span class="stat-icon">✓</span><strong id="home-solved">0</strong><span>Unique puzzles solved</span></div><div class="stat-card"><span class="stat-icon">✦</span><strong>+10</strong><span>Mooncoins per new solve</span></div></div>
+      <p class="section-footnote">Progress is saved in this browser.</p>
+    </section>
 
-      <section class="how">
-        <h2>How it works</h2>
-
-        <div class="steps">
-          <div class="step">
-            <h3>1. Play</h3>
-            <p>Solve puzzles and play games at your own pace.</p>
-          </div>
-
-          <div class="step">
-            <h3>2. Earn</h3>
-            <p>Collect mooncoins for every bit of effort.</p>
-          </div>
-
-          <div class="step">
-            <h3>3. Unlock</h3>
-            <p>Trade mooncoins for chess courses.</p>
-          </div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <script>
-    try {
-      const coins = JSON.parse(
-        localStorage.getItem("moonchess.coins")
-      );
-
-      document.getElementById("side-coins").textContent =
-        Number.isFinite(coins) && coins >= 0 ? coins : 0;
-    } catch (e) {
-      document.getElementById("side-coins").textContent = "0";
-    }
-  </script>
+    <section class="home-section how-section" id="how-it-works" aria-labelledby="how-heading"><p class="eyebrow">SIMPLE TO START</p><h2 id="how-heading">How Moonchess works</h2><div class="steps"><div class="step"><span class="step-number">01</span><h3>Solve</h3><p>Drag or click pieces to find the correct checkmate sequence.</p></div><div class="step"><span class="step-number">02</span><h3>Earn</h3><p>Get 10 mooncoins the first time you solve each puzzle.</p></div><div class="step"><span class="step-number">03</span><h3>Improve</h3><p>Practice mate in 1, 2, and 3 as you build your skills.</p></div></div></section>
+    <section class="closing-cta"><div><h2>Ready for your next move?</h2><p>Your next checkmate is waiting.</p></div><a class="button" href="puzzles.html">Play puzzles →</a></section>
+  </main>
+</div>
+<script>
+(function () {
+  let coins = 0, solved = [];
+  try {
+    const storedCoins = JSON.parse(localStorage.getItem('moonchess.coins'));
+    const storedSolved = JSON.parse(localStorage.getItem('moonchess.solved'));
+    if (Number.isFinite(storedCoins) && storedCoins >= 0) coins = storedCoins;
+    if (Array.isArray(storedSolved)) solved = storedSolved;
+  } catch (error) { /* Storage may be unavailable. */ }
+  document.getElementById('side-coins').textContent = coins;
+  document.getElementById('home-coins').textContent = coins;
+  document.getElementById('home-solved').textContent = new Set(solved).size;
+})();
+</script>
 </body>
 </html>
