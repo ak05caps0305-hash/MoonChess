@@ -204,6 +204,7 @@
       box-shadow: inset 0 0 0 4px #FFD84D;
     }
 
+    .sound-control { margin-top: 1rem; }
     .controls {
       display: flex;
       flex-wrap: wrap;
@@ -331,6 +332,7 @@
               Next puzzle
             </button>
           </div>
+          <div class="sound-control"><button type="button" id="sound-btn" class="btn" aria-pressed="true">Sound: On</button></div>
         </div>
       </div>
     </main>
@@ -355,6 +357,49 @@ const coinEl = document.getElementById("coin-count");
 const hintBtn = document.getElementById("hint-btn");
 const restartBtn = document.getElementById("restart-btn");
 const nextBtn = document.getElementById("next-btn");
+const soundBtn = document.getElementById("sound-btn");
+const SOUND_KEY = "moonchess.sound";
+let soundOn = true;
+try { soundOn = localStorage.getItem(SOUND_KEY) !== "off"; } catch {}
+let audioCtx = null;
+function updateSoundButton() {
+  soundBtn.textContent = soundOn ? "Sound: On" : "Sound: Off";
+  soundBtn.setAttribute("aria-pressed", String(soundOn));
+}
+soundBtn.addEventListener("click", () => {
+  soundOn = !soundOn;
+  try { localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off"); } catch {}
+  updateSoundButton();
+  if (soundOn) playSound("move");
+});
+updateSoundButton();
+function playSound(kind) {
+  if (!soundOn) return;
+  try {
+    const Context = window.AudioContext || window.webkitAudioContext;
+    if (!Context) return;
+    if (!audioCtx) audioCtx = new Context();
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    const now = audioCtx.currentTime;
+    const notes = kind === "mate" ? [[660,0,.11],[880,.13,.17],[1100,.33,.22]]
+      : kind === "error" ? [[220,0,.11],[165,.12,.15]]
+      : kind === "capture" ? [[180,0,.055],[120,.045,.09]]
+      : kind === "check" ? [[520,0,.09],[680,.1,.1]]
+      : [[410,0,.045],[310,.045,.06]];
+    for (const [freq,delay,duration] of notes) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = kind === "mate" ? "sine" : "triangle";
+      osc.frequency.setValueAtTime(freq, now+delay);
+      gain.gain.setValueAtTime(0.0001,now+delay);
+      gain.gain.exponentialRampToValueAtTime(0.065,now+delay+.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001,now+delay+duration);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now+delay); osc.stop(now+delay+duration+.01);
+    }
+  } catch (e) { console.warn("Audio unavailable",e); }
+}
+
 
 function readStore(key, fallback) {
   try { const raw=localStorage.getItem(key); return raw===null ? fallback : JSON.parse(raw); }
@@ -478,6 +523,7 @@ function renderBoard() {
   }
 }
 function completePuzzle() {
+  playSound("mate");
   solved=true; thinking=false;
   hintBtn.disabled=true;
   nextBtn.classList.add("primary");
@@ -500,12 +546,14 @@ function handleSquareClick(index) {
   const expected=puzzle.moves[step];
   // Match the exact solution; queen promotion is the default when no promotion is specified.
   if (attempt!==expected.slice(0,4)) {
+    playSound("error");
     selected=null; setStatus("Not quite — try again!","bad");
     boardEl.classList.remove("shake"); void boardEl.offsetWidth; boardEl.classList.add("shake");
     renderBoard(); return;
   }
   const moved=playUci(expected);
   if (!moved) { selected=null;setStatus("Puzzle move error. Try Next puzzle.","bad");renderBoard();return; }
+  playSound(moved.isCapture() || moved.isEnPassant() ? "capture" : chess.isCheck() ? "check" : "move");
   lastMove=[sqIndex(expected.slice(0,2)),sqIndex(expected.slice(2,4))];
   selected=null;hintSquare=null;step++;
   renderBoard();
@@ -520,7 +568,9 @@ function handleSquareClick(index) {
   setTimeout(()=>{
     if(thisRun!==runId) return;
     const reply=puzzle.moves[step];
-    if(!playUci(reply)) {thinking=false;setStatus("Opponent move error. Try Next puzzle.","bad");return;}
+    const opponentMove=playUci(reply);
+    if(!opponentMove) {thinking=false;setStatus("Opponent move error. Try Next puzzle.","bad");return;}
+    playSound(opponentMove.isCapture() || opponentMove.isEnPassant() ? "capture" : chess.isCheck() ? "check" : "move");
     lastMove=[sqIndex(reply.slice(0,2)),sqIndex(reply.slice(2,4))];
     step++;thinking=false;
     showTurn();renderBoard();
