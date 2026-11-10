@@ -527,7 +527,16 @@
           span.className =
             "piece " + (isWhite(piece) ? "w" : "b");
 
-          span.textContent = GLYPHS[piece];
+         const img = document.createElement("img");
+img.src = (isWhite(piece) ? "white-" : "black-")
+  + PIECE_NAMES[piece.toLowerCase()] + ".png";
+img.alt = "";
+img.draggable = false;
+img.style.width = "90%";
+img.style.height = "90%";
+img.style.objectFit = "contain";
+img.style.pointerEvents = "none";
+span.appendChild(img);
           span.setAttribute("aria-hidden", "true");
 
           square.appendChild(span);
