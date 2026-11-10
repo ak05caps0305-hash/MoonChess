@@ -22,7 +22,7 @@ export async function register(username,email,password) {
   if(!/^[a-zA-Z0-9_]{3,20}$/.test(username)) throw Error('Username must be 3–20 letters, numbers, or underscores.');
   const result=await createUserWithEmailAndPassword(auth,email,password);
   await updateProfile(result.user,{displayName:username});
-  await setDoc(doc(db,'users',result.user.uid),{username,email:result.user.email,coins:0,solved:[],rating:1000,createdAt:Date.now()});
+  await setDoc(doc(db,'users',result.user.uid),{username,email:result.user.email,coins:0,solved:[],failed:[],rating:1000,createdAt:Date.now()});
   leaveGuest(); return result.user;
 }
 export async function login(email,password) { const r=await signInWithEmailAndPassword(auth,email,password);leaveGuest();return r.user; }
@@ -40,5 +40,21 @@ export async function awardPuzzle(uid,id,puzzleRating) {
     const gain = Math.max(1, Math.min(5, 3 + Math.floor(difference / 25)));
     tx.set(ref,{coins:(Number(data.coins)||0)+10,solved:[...solved,key],rating:currentRating+gain},{merge:true});
     return gain;
+  });
+}
+
+// A wrong attempt is penalized only once per puzzle per account.
+export async function penalizePuzzle(uid,id,puzzleRating) {
+  const ref=doc(db,'users',uid), key='lichess:'+id;
+  return runTransaction(db,async tx=>{
+    const snap=await tx.get(ref);
+    if(!snap.exists()) throw Error('Player profile missing');
+    const data=snap.data(), failed=Array.isArray(data.failed)?data.failed:[];
+    if(failed.includes(key)||(Array.isArray(data.solved)&&data.solved.includes(key))) return 0;
+    const currentRating=Number.isInteger(data.rating)?data.rating:1000;
+    const difference=Number(puzzleRating)-currentRating;
+    const loss=Math.max(1,Math.min(5,3-Math.floor(difference/25)));
+    tx.update(ref,{rating:Math.max(0,currentRating-loss),failed:[...failed,key]});
+    return loss;
   });
 }

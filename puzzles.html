@@ -33,6 +33,14 @@
       touch-action: none;
     }
 
+    .elo-display { background:#291743; border:2px solid #6B4BA3; border-radius:14px; padding:1.2rem; text-align:center; margin-bottom:1.2rem; transition:background .2s,border-color .2s; }
+    .elo-display .elo-label { color:#E2D9F3; font-size:.9rem; font-weight:700; }
+    .elo-display .elo-number { font-size:clamp(3.5rem,7vw,5.5rem); line-height:1.15; font-weight:900; color:#FFD84D; }
+    .elo-display .elo-change { min-height:1.5rem; font-size:1.1rem; font-weight:800; }
+    .elo-display.elo-win { background:#153d2a; border-color:#48d88a; }
+    .elo-display.elo-win .elo-number,.elo-display.elo-win .elo-change { color:#65efa5; }
+    .elo-display.elo-loss { background:#4a1b2a; border-color:#ff667f; }
+    .elo-display.elo-loss .elo-number,.elo-display.elo-loss .elo-change { color:#ff8a9e; }
     .puzzle-panel {
       flex: 0 1 310px;
       min-width: 0;
@@ -309,6 +317,11 @@
         ></div>
 
         <div class="puzzle-panel">
+          <div class="elo-display" id="elo-display" aria-live="polite">
+            <div class="elo-label">YOUR PUZZLE RATING</div>
+            <div class="elo-number" id="elo-number">1000</div>
+            <div class="elo-change" id="elo-change"></div>
+          </div>
           <p id="account-state" style="color:#FFD84D;font-size:.9rem;margin:0 0 .5rem">Checking account...</p>
           <p id="puzzle-count"></p>
           <p id="rating-info" style="color:#FFD84D;font-size:.95rem"></p>
@@ -347,7 +360,7 @@
   <script type="module">
 "use strict";
 import { Chess } from "https://cdn.jsdelivr.net/npm/chess.js@1.4.0/+esm";
-import { auth, isGuest, watchProfile, awardPuzzle } from "./account.js";
+import { auth, isGuest, watchProfile, awardPuzzle, penalizePuzzle } from "./account.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 const FILES = "abcdefgh";
@@ -411,13 +424,19 @@ function playSound(kind) {
 
 let coins = 0;
 let playerRating = 1000;
+const failedSet = new Set();
+let failureBusy = false;
+let ratingFeedback = "";
 const solvedSet = new Set();
 function applyProfile(data) {
   coins = Math.max(0, Number(data?.coins) || 0);
   playerRating = Number.isFinite(data?.rating) ? data.rating : 1000;
+  failedSet.clear();
+  for (const id of Array.isArray(data?.failed) ? data.failed : []) failedSet.add(id);
   solvedSet.clear();
   for (const id of Array.isArray(data?.solved) ? data.solved : []) solvedSet.add(id);
   updateCoins();
+  updateRatingInfo();
 }
 function enterSession(user) {
   if (unsubscribeProfile) { unsubscribeProfile(); unsubscribeProfile = null; }
@@ -426,6 +445,8 @@ function enterSession(user) {
   coins = 0;
   playerRating = 1000;
   solvedSet.clear();
+  failedSet.clear();
+  ratingFeedback = "";
   updateCoins();
   if (user) {
     unsubscribeProfile = watchProfile(user.uid, applyProfile);
@@ -481,7 +502,34 @@ function nextRandomPuzzle() {
 function updateRatingInfo() {
   const el = document.getElementById('rating-info');
   if (!el) return;
-  el.textContent = 'Your puzzle rating: ' + playerRating + (puzzle ? ' · Puzzle rating: ' + puzzle.rating : '');
+  el.textContent = puzzle ? 'Puzzle difficulty: ' + puzzle.rating : '';
+  document.getElementById('elo-number').textContent = playerRating;
+}
+function showRatingFeedback(kind, amount) {
+  const display = document.getElementById('elo-display');
+  display.classList.remove('elo-win','elo-loss');
+  if (kind) display.classList.add(kind === 'win' ? 'elo-win' : 'elo-loss');
+  document.getElementById('elo-change').textContent = kind ? (kind === 'win' ? '+' : '-') + amount + ' rating' : '';
+}
+async function recordWrongMove() {
+  if (!currentUser || !puzzle || failureBusy) return;
+  const key = 'lichess:' + puzzle.id;
+  if (failedSet.has(key) || solvedSet.has(key)) return;
+  failureBusy = true;
+  const uid = currentUser.uid, id = puzzle.id, rating = puzzle.rating;
+  try {
+    const loss = await penalizePuzzle(uid,id,rating);
+    if (loss) {
+      failedSet.add(key);
+      if (puzzle?.id === id && currentUser?.uid === uid) {
+        showRatingFeedback('loss',loss);
+        setStatus('Incorrect move! -' + loss + ' rating. Try again.','bad');
+      }
+    }
+  } catch (error) {
+    console.error('Rating penalty could not be saved',error);
+    if (puzzle?.id === id) setStatus('Incorrect move. Rating could not be saved; check your connection.','bad');
+  } finally { failureBusy = false; }
 }
 function pieceAt(index) {
   const piece=chess.get(sqName(index));
@@ -502,6 +550,7 @@ function loadPuzzle(newPuzzle) {
   catch(e) { console.error("Bad puzzle FEN",puzzle.id,e); setStatus("Could not load this puzzle. Try Next puzzle.","bad"); return; }
   playerColor=chess.turn();
   step=0; selected=null; hintSquare=null; lastMove=[]; solved=false; thinking=false;
+  showRatingFeedback('',0);
   titleEl.textContent="Mate in " + puzzle.mate;
   countEl.textContent=pools.length + " puzzles · Matched to your rating";
   updateRatingInfo();
@@ -583,6 +632,7 @@ async function completePuzzle() {
   setStatus("Checkmate! Saving your reward...", "good");
   try {
     const awarded = await awardPuzzle(rewardUser, puzzle.id, puzzle.rating);
+    if (awarded) showRatingFeedback('win',awarded);
     setStatus(awarded ? `Checkmate! +10 mooncoins, +${awarded} rating.` :
       "Checkmate! You've already earned coins for this puzzle.", "good");
   } catch (error) {
@@ -605,6 +655,7 @@ function handleSquareClick(index) {
   if (attempt!==expected.slice(0,4)) {
     playSound("error");
     selected=null; setStatus("Not quite — try again!","bad");
+    void recordWrongMove();
     boardEl.classList.remove("shake"); void boardEl.offsetWidth; boardEl.classList.add("shake");
     renderBoard(); return;
   }
