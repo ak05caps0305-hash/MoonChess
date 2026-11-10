@@ -82,21 +82,43 @@
     <section class="closing-cta"><div><h2>Ready for your next move?</h2><p>Your next checkmate is waiting.</p></div><a class="button" href="puzzles.html">Play puzzles →</a></section>
   </main>
 </div>
-<script>
-(function () {
-  let coins = 0, solved = [];
-  try {
-    const storedCoins = JSON.parse(localStorage.getItem('moonchess.coins'));
-    const storedSolved = JSON.parse(localStorage.getItem('moonchess.solved'));
-    if (Number.isFinite(storedCoins) && storedCoins >= 0) coins = storedCoins;
-    if (Array.isArray(storedSolved)) solved = storedSolved;
-  } catch (error) { /* Storage may be unavailable. */ }
-  document.getElementById('side-coins').textContent = coins;
-  document.getElementById('home-coins').textContent = coins;
-  document.getElementById('home-solved').textContent = new Set(solved).size;
-})();
+
+
+<script type="module">
+import { requireSession, watchProfile } from './account.js';
+
+const sideCoins = document.getElementById('side-coins');
+const homeCoins = document.getElementById('home-coins');
+const homeSolved = document.getElementById('home-solved');
+
+document.body.style.visibility = 'hidden';
+
+function updateProgress(coins, solved) {
+  sideCoins.textContent = coins;
+  homeCoins.textContent = coins;
+  homeSolved.textContent = solved;
+}
+
+requireSession(user => {
+  if (!user) {
+    updateProgress(0, 0);
+    document.body.style.visibility = 'visible';
+    return;
+  }
+
+  watchProfile(user.uid, profile => {
+    const coins = Number(profile.coins) || 0;
+    const solved = Array.isArray(profile.solved)
+      ? new Set(profile.solved).size
+      : 0;
+
+    updateProgress(coins, solved);
+    document.body.style.visibility = 'visible';
+  });
+});
 </script>
-  
+
+
 <script type="module">
 import { auth, isGuest } from './account.js';
 import { onAuthStateChanged } from
