@@ -593,6 +593,173 @@
       loadPuzzle(currentIdx + 1);
     });
 
+    
+// Chess piece drag-and-drop
+
+let drag = null;
+let suppressClick = false;
+
+function findBoardSquare(x, y) {
+  const element = document.elementFromPoint(x, y);
+  const square = element?.closest(".sq");
+
+  if (!square || !boardEl.contains(square)) {
+    return null;
+  }
+
+  return square;
+}
+
+function clearDropTargets() {
+  boardEl.querySelectorAll(".drop-target").forEach(sq => {
+    sq.classList.remove("drop-target");
+  });
+}
+
+function cleanupDrag() {
+  if (!drag) return;
+
+  drag.ghost?.remove();
+
+  if (drag.sourceSquare?.isConnected) {
+    drag.sourceSquare.classList.remove("dragging");
+  }
+
+  clearDropTargets();
+
+  drag = null;
+}
+
+boardEl.addEventListener("pointerdown", event => {
+  if (state.solved || drag || !event.isPrimary) return;
+
+  const square = event.target.closest(".sq");
+  if (!square) return;
+
+  const pieceElement = square.querySelector(".piece");
+  if (!pieceElement) return;
+
+  const squareIndex = Number(square.dataset.index);
+  const piece = state.board[squareIndex];
+
+  const isPlayerPiece =
+    piece &&
+    (state.turn === "w"
+      ? isWhite(piece)
+      : !isWhite(piece));
+
+  if (!isPlayerPiece) return;
+
+  drag = {
+    pointerId: event.pointerId,
+    from: squareIndex,
+    startX: event.clientX,
+    startY: event.clientY,
+    sourceSquare: square,
+    piece,
+    ghost: null,
+    moved: false
+  };
+});
+
+document.addEventListener("pointermove", event => {
+  if (!drag || event.pointerId !== drag.pointerId) return;
+
+  const distance = Math.hypot(
+    event.clientX - drag.startX,
+    event.clientY - drag.startY
+  );
+
+  if (!drag.moved && distance < 6) return;
+
+  if (!drag.moved) {
+    drag.moved = true;
+
+    const size = drag.sourceSquare.getBoundingClientRect().width;
+
+    const ghost = document.createElement("div");
+    ghost.className =
+      "drag-piece " + (isWhite(drag.piece) ? "w" : "b");
+
+    ghost.textContent = GLYPHS[drag.piece];
+    ghost.style.width = size + "px";
+    ghost.style.height = size + "px";
+    ghost.style.fontSize = size * 0.8 + "px";
+
+    document.body.appendChild(ghost);
+
+    drag.ghost = ghost;
+    drag.sourceSquare.classList.add("dragging");
+  }
+
+  event.preventDefault();
+
+  drag.ghost.style.left = event.clientX + "px";
+  drag.ghost.style.top = event.clientY + "px";
+
+  clearDropTargets();
+
+  const target = findBoardSquare(
+    event.clientX,
+    event.clientY
+  );
+
+  if (target && target !== drag.sourceSquare) {
+    target.classList.add("drop-target");
+  }
+}, { passive: false });
+
+document.addEventListener("pointerup", event => {
+  if (!drag || event.pointerId !== drag.pointerId) return;
+
+  const currentDrag = drag;
+  const wasMoved = currentDrag.moved;
+
+  const target = wasMoved
+    ? findBoardSquare(event.clientX, event.clientY)
+    : null;
+
+  const targetIndex = target
+    ? Number(target.dataset.index)
+    : null;
+
+  cleanupDrag();
+
+  if (!wasMoved) return;
+
+  suppressClick = true;
+
+  // Prevent the release click from selecting another piece.
+  setTimeout(() => {
+    suppressClick = false;
+  }, 0);
+
+  if (targetIndex === null ||
+      targetIndex === currentDrag.from) {
+    return;
+  }
+
+  state.selected = currentDrag.from;
+  handleSquareClick(targetIndex);
+});
+
+document.addEventListener("pointercancel", event => {
+  if (drag && event.pointerId === drag.pointerId) {
+    cleanupDrag();
+  }
+});
+
+window.addEventListener("blur", cleanupDrag);
+
+// Prevent a drag release from also triggering a click.
+boardEl.addEventListener("click", event => {
+  if (suppressClick) {
+    event.stopImmediatePropagation();
+    suppressClick = false;
+  }
+}, true);
+
+    
     updateCoins();
     loadPuzzle(0);
   </script>
