@@ -308,6 +308,7 @@
         ></div>
 
         <div class="puzzle-panel">
+          <p id="account-state" style="color:#FFD84D;font-size:.9rem;margin:0 0 .5rem">Checking account...</p>
           <p id="puzzle-count"></p>
           <h1 id="puzzle-title"></h1>
           <p id="status" role="status" aria-live="polite"></p>
@@ -316,8 +317,8 @@
             <p><strong>How to play:</strong></p>
             <p>
               Drag a piece to its destination, or click a piece
-              and then its destination square. Finish the checkmate sequence to earn
-              10 mooncoins the first time you solve each puzzle.
+              and then its destination square. Finish the checkmate sequence. Registered players earn
+              10 mooncoins the first time they solve each puzzle. Guests earn no mooncoins.
             </p>
           </div>
 
@@ -344,11 +345,16 @@
   <script type="module">
 "use strict";
 import { Chess } from "https://cdn.jsdelivr.net/npm/chess.js@1.4.0/+esm";
+import { auth, isGuest, watchProfile, awardPuzzle } from "./account.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 const FILES = "abcdefgh";
 const PIECE_NAMES = {k:"king",q:"queen",r:"rook",b:"bishop",n:"knight",p:"pawn"};
-const COIN_KEY = "moonchess.coins";
-const SOLVED_KEY = "moonchess.solved";
+let currentUser = null;
+let sessionReady = false;
+let unsubscribeProfile = null;
+let rewardBusy = false;
+const guestNotice = "Guest mode: puzzles are free, but mooncoins require an account.";
 const boardEl = document.getElementById("board");
 const countEl = document.getElementById("puzzle-count");
 const titleEl = document.getElementById("puzzle-title");
@@ -401,16 +407,30 @@ function playSound(kind) {
 }
 
 
-function readStore(key, fallback) {
-  try { const raw=localStorage.getItem(key); return raw===null ? fallback : JSON.parse(raw); }
-  catch { return fallback; }
+let coins = 0;
+const solvedSet = new Set();
+function applyProfile(data) {
+  coins = Math.max(0, Number(data?.coins) || 0);
+  solvedSet.clear();
+  for (const id of Array.isArray(data?.solved) ? data.solved : []) solvedSet.add(id);
+  updateCoins();
 }
-function writeStore(key,value) { try { localStorage.setItem(key,JSON.stringify(value)); } catch {} }
-let coins = readStore(COIN_KEY,0);
-if (!Number.isFinite(coins) || coins<0) coins=0;
-let solvedIds = readStore(SOLVED_KEY,[]);
-if (!Array.isArray(solvedIds)) solvedIds=[];
-const solvedSet = new Set(solvedIds);
+function enterSession(user) {
+  if (unsubscribeProfile) { unsubscribeProfile(); unsubscribeProfile = null; }
+  currentUser = user;
+  sessionReady = true;
+  coins = 0;
+  solvedSet.clear();
+  updateCoins();
+  if (user) {
+    unsubscribeProfile = watchProfile(user.uid, applyProfile);
+    document.getElementById("account-state").textContent =
+      "Playing as " + (user.displayName || user.email || "Member");
+  } else {
+    document.getElementById("account-state").textContent = "Playing as Guest · No mooncoins";
+  }
+  if (!puzzle && pools.length) loadPuzzle(nextRandomPuzzle());
+}
 const pools = [
   ...MOONCHESS_MATEIN1.map(p=>({...p, mate:1})),
   ...MOONCHESS_MATEIN2.map(p=>({...p, mate:2})),
@@ -522,21 +542,37 @@ function renderBoard() {
     boardEl.appendChild(square);
   }
 }
-function completePuzzle() {
+async function completePuzzle() {
   playSound("mate");
   solved=true; thinking=false;
   hintBtn.disabled=true;
   nextBtn.classList.add("primary");
-  const key="lichess:"+puzzle.id;
-  if (!solvedSet.has(key)) {
-    solvedSet.add(key);
-    writeStore(SOLVED_KEY,Array.from(solvedSet));
-    coins+=10; writeStore(COIN_KEY,coins); updateCoins();
-    setStatus("Checkmate! +10 mooncoins.","good");
-  } else setStatus("Checkmate! You've already earned coins for this puzzle.","good");
+  if (!currentUser) {
+    setStatus("Checkmate! " + guestNotice, "good");
+    return;
+  }
+  const key = "lichess:" + puzzle.id;
+  const rewardUser = currentUser.uid;
+  if (solvedSet.has(key)) {
+    setStatus("Checkmate! You've already earned coins for this puzzle.", "good");
+    return;
+  }
+  if (rewardBusy) return;
+  rewardBusy = true;
+  setStatus("Checkmate! Saving your reward...", "good");
+  try {
+    const awarded = await awardPuzzle(rewardUser, puzzle.id);
+    setStatus(awarded ? "Checkmate! +10 mooncoins." :
+      "Checkmate! You've already earned coins for this puzzle.", "good");
+  } catch (error) {
+    console.error("Reward could not be saved", error);
+    setStatus("Checkmate! Reward couldn't be saved. Check your connection or Firestore rules.", "bad");
+  } finally {
+    rewardBusy = false;
+  }
 }
 function handleSquareClick(index) {
-  if (!chess || solved || thinking) return;
+  if (!sessionReady || !chess || solved || thinking) return;
   const piece=pieceAt(index);
   const own=piece && piece.color===playerColor;
   if(selected===null) { if(own) {selected=index;hintSquare=null;renderBoard();} return; }
@@ -650,8 +686,17 @@ boardEl.addEventListener("click",event=>{
   suppressClick=false;clearTimeout(clickResetTimer);
 },true);
 updateCoins();
-if(!pools.length)setStatus("No puzzles found. Check mate1.js, mate2.js, and mate3.js.","bad");
-else loadPuzzle(nextRandomPuzzle());
+if (!pools.length) setStatus("No puzzles found. Check mate1.js, mate2.js, and mate3.js.","bad");
+onAuthStateChanged(auth, user => {
+  if (!user && !isGuest()) {
+    location.replace("auth.html");
+    return;
+  }
+  enterSession(user);
+}, error => {
+  console.error("Authentication failed", error);
+  setStatus("Couldn't verify your account. Please refresh the page.", "bad");
+});
   </script>
 </body>
 </html>
