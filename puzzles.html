@@ -97,6 +97,23 @@
       background: #6B4BA3;
     }
 
+
+    /* Chess coordinates: rank on the left, file along the bottom. */
+    .sq .coordinate {
+      position: absolute;
+      z-index: 4;
+      pointer-events: none;
+      font-family: Arial, sans-serif;
+      font-size: clamp(9px, 1.2vw, 12px);
+      font-weight: 700;
+      line-height: 1;
+      user-select: none;
+    }
+    .sq.light .coordinate { color: #49316f; }
+    .sq.dark .coordinate { color: #e9dcff; }
+    .sq .rank-label { top: 4px; left: 4px; }
+    .sq .file-label { bottom: 4px; right: 4px; }
+
     .sq.last::before {
       content: "";
       position: absolute;
@@ -440,6 +457,21 @@ function renderBoard() {
       img.style.width="90%"; img.style.height="90%";
       img.style.objectFit="contain"; img.style.pointerEvents="none";
       span.appendChild(img); square.appendChild(span);
+    }
+    // Coordinates follow the player's board orientation.
+    if(display % 8 === 0) {
+      const rank=document.createElement("span");
+      rank.className="coordinate rank-label";
+      rank.textContent=sqName(i)[1];
+      rank.setAttribute("aria-hidden","true");
+      square.appendChild(rank);
+    }
+    if(Math.floor(display / 8) === 7) {
+      const file=document.createElement("span");
+      file.className="coordinate file-label";
+      file.textContent=sqName(i)[0];
+      file.setAttribute("aria-hidden","true");
+      square.appendChild(file);
     }
     square.addEventListener("click",()=>handleSquareClick(i));
     boardEl.appendChild(square);
