@@ -244,10 +244,11 @@ h1 {
   justify-content: center;
   font-family: "DejaVu Sans", "Segoe UI Symbol", sans-serif;
   line-height: 1;
-  transform: translate(-50%, -50%);
-  filter: drop-shadow(0 6px 5px rgba(0, 0, 0, 0.4));
+  transform: translate(-50%, -65%) scale(1.2);
+  filter: drop-shadow(0 12px 8px rgba(0, 0, 0, 0.6));
+  transition: transform 0.12s ease;
+  cursor: grabbing;
 }
-
 .drag-piece.w {
   color: #FFF6D6;
   text-shadow: 0 2px 2px #1E1033;
