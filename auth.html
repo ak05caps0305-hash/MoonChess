@@ -1,1 +1,240 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Welcome | Moonchess</title>
+<link rel="stylesheet" href="style.css">
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #49316f, #1e1033 70%);
+  color: #f5f0fa;
+  font-family: Arial, sans-serif;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.auth-shell { width: min(100%, 440px); }
+.brand { text-align: center; margin-bottom: 25px; }
+.knight { font-size: 65px; color: #ffd84d; }
+.brand h1 { color: #ffd84d; font-size: 34px; margin: 8px 0; }
+.brand p { color: #d8c9ef; }
+.auth-card {
+  background: #2b1945;
+  border: 1px solid #665087;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 20px 50px #10082088;
+}
+h2 { margin: 0 0 10px; }
+.sub { color: #d8c9ef; font-size: 14px; line-height: 1.5; }
+.tabs { display: flex; gap: 8px; margin: 22px 0; }
+.tab {
+  flex: 1;
+  background: transparent;
+  color: white;
+  border: 1px solid #8066a4;
+  border-radius: 9px;
+  padding: 12px;
+  cursor: pointer;
+}
+.tab.active { background: #ffd84d; color: #1e1033; font-weight: bold; }
+label { display: block; margin: 15px 0 7px; font-size: 14px; }
+input {
+  width: 100%;
+  padding: 13px;
+  background: #1e1033;
+  border: 1px solid #8066a4;
+  border-radius: 9px;
+  color: white;
+  font-size: 15px;
+}
+input:focus { outline: 2px solid #ffd84d; }
+.primary, .guest {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
+}
+.primary { margin-top: 22px; border: none; background: #ffd84d; color: #1e1033; }
+.guest { border: 1px solid #8066a4; background: transparent; color: white; }
+button:disabled { opacity: .6; cursor: wait; }
+.divider { text-align: center; color: #b9a5e3; margin: 20px 0; font-size: 13px; }
+.help { text-align: center; margin-top: 16px; }
+.link { background: none; border: none; color: #ffd84d; text-decoration: underline; cursor: pointer; }
+.message { color: #ffb6c0; font-size: 13px; line-height: 1.5; }
+.message.ok { color: #b6f0c9; }
+.fine { text-align: center; font-size: 12px; color: #c2b1d8; margin-top: 18px; }
+[hidden] { display: none !important; }
+@media (max-width: 480px) { .auth-card { padding: 22px; } }
+</style>
+</head>
+<body>
+<main class="auth-shell">
+  <div class="brand">
+    <div class="knight">♞</div>
+    <h1>Moonchess</h1>
+    <p>Your next great move starts here.</p>
+  </div>
+
+  <section class="auth-card">
+    <h2 id="heading">Welcome back</h2>
+    <p class="sub" id="subtitle">Sign in to save your progress and earn mooncoins.</p>
+
+    <div class="tabs" id="tabs">
+      <button class="tab active" id="signin-tab" type="button">Sign in</button>
+      <button class="tab" id="signup-tab" type="button">Create account</button>
+    </div>
+
+    <form id="auth-form">
+      <div id="username-wrap" hidden>
+        <label for="username">Username</label>
+        <input id="username" minlength="3" maxlength="20"
+               pattern="[a-zA-Z0-9_]{3,20}" autocomplete="username">
+      </div>
+
+      <label for="email">Email address</label>
+      <input id="email" type="email" autocomplete="email" required>
+
+      <div id="password-wrap">
+        <label for="password">Password</label>
+        <input id="password" type="password" minlength="6"
+               autocomplete="current-password" required>
+      </div>
+
+      <button class="primary" id="submit" type="submit">Sign in</button>
+    </form>
+
+    <p class="help">
+      <button class="link" id="forgot" type="button">Forgot password?</button>
+    </p>
+
+    <p class="message" id="message" role="status"></p>
+
+    <div class="divider">or continue without an account</div>
+    <button class="guest" id="guest" type="button">Play as guest</button>
+    <p class="fine">Guests can solve puzzles but cannot earn mooncoins.</p>
+  </section>
+</main>
+
+<script type="module">
+import {
+  auth, register, login, resetPassword, playGuest, leaveGuest
+} from './account.js';
+
+import { onAuthStateChanged } from
+  'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+
+const $ = id => document.getElementById(id);
+let mode = 'signin';
+
+function setMode(next) {
+  mode = next;
+  $('auth-form').reset();
+  $('message').textContent = '';
+  $('message').className = 'message';
+
+  $('tabs').hidden = next === 'reset';
+  $('username-wrap').hidden = next !== 'signup';
+  $('password-wrap').hidden = next === 'reset';
+  $('password').required = next !== 'reset';
+  $('username').required = next === 'signup';
+
+  $('signin-tab').classList.toggle('active', next === 'signin');
+  $('signup-tab').classList.toggle('active', next === 'signup');
+
+  $('heading').textContent =
+    next === 'signup' ? 'Create your account' :
+    next === 'reset' ? 'Reset your password' : 'Welcome back';
+
+  $('subtitle').textContent =
+    next === 'signup' ? 'Choose a username and start earning mooncoins.' :
+    next === 'reset' ? 'We will email you a password reset link.' :
+    'Sign in to save your progress and earn mooncoins.';
+
+  $('submit').textContent =
+    next === 'signup' ? 'Create account' :
+    next === 'reset' ? 'Send reset link' : 'Sign in';
+
+  $('forgot').textContent =
+    next === 'reset' ? 'Back to sign in' : 'Forgot password?';
+
+  $('password').autocomplete =
+    next === 'signup' ? 'new-password' : 'current-password';
+}
+
+$('signin-tab').onclick = () => setMode('signin');
+$('signup-tab').onclick = () => setMode('signup');
+$('forgot').onclick = () => setMode(mode === 'reset' ? 'signin' : 'reset');
+
+$('guest').onclick = () => {
+  if (auth?.currentUser) {
+    $('message').textContent =
+      'Please sign out before switching to guest mode.';
+    return;
+  }
+  playGuest();
+};
+
+function friendly(err) {
+  const messages = {
+    'auth/email-already-in-use': 'That email is already registered.',
+    'auth/invalid-email': 'Enter a valid email address.',
+    'auth/weak-password': 'Choose a stronger password.',
+    'auth/invalid-credential': 'Incorrect email or password.',
+    'auth/too-many-requests': 'Too many attempts. Try again later.',
+    'auth/network-request-failed': 'Check your internet connection.'
+  };
+  return messages[err?.code] ||
+    err?.message || 'Something went wrong. Please try again.';
+}
+
+$('auth-form').addEventListener('submit', async event => {
+  event.preventDefault();
+
+  const button = $('submit');
+  button.disabled = true;
+  $('message').textContent = '';
+
+  try {
+    const email = $('email').value.trim();
+    const password = $('password').value;
+
+    if (mode === 'signup') {
+      await register($('username').value, email, password);
+    } else if (mode === 'reset') {
+      await resetPassword(email);
+      $('message').textContent =
+        'If that email is registered, check your inbox for a reset link.';
+      $('message').className = 'message ok';
+      return;
+    } else {
+      await login(email, password);
+    }
+
+    leaveGuest();
+    location.replace('index.html');
+  } catch (err) {
+    $('message').textContent = friendly(err);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+if (auth) {
+  onAuthStateChanged(auth, user => {
+    if (user && !sessionStorage.getItem('moonchess.guest')) {
+      location.replace('index.html');
+    }
+  });
+}
+</script>
+</body>
+</html>
+
