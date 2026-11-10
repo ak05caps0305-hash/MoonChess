@@ -1,10 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Moonchess: Earn Your Mastery</title>
-  <meta name="description" content="Solve puzzles, play games, and earn mooncoins to unlock chess courses.">
+  <meta name="description" content="Solve chess puzzles and earn mooncoins to unlock chess courses.">
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="home">
@@ -15,7 +16,9 @@
       <nav class="tabs" aria-label="Main">
         <a class="tab" href="index.html" aria-current="page">Home</a>
         <a class="tab" href="puzzles.html">Puzzles</a>
-        <span class="tab disabled" aria-disabled="true">Courses <small>Soon</small></span>
+        <span class="tab disabled" aria-disabled="true">
+          Courses <small>Soon</small>
+        </span>
       </nav>
 
       <div class="side-coins">
@@ -26,20 +29,29 @@
 
     <main class="content">
       <h1>Earn your mastery.</h1>
-      <p>Solve puzzles. Play games. Collect mooncoins. Spend them on chess courses.</p>
-      <a class="button" href="puzzles.html">Start playing free</a>
+      <p>
+        Solve puzzles. Play games. Collect mooncoins.
+        Spend them on chess courses.
+      </p>
+
+      <a class="button" href="puzzles.html">
+        Start playing free
+      </a>
 
       <section class="how">
         <h2>How it works</h2>
+
         <div class="steps">
           <div class="step">
             <h3>1. Play</h3>
             <p>Solve puzzles and play games at your own pace.</p>
           </div>
+
           <div class="step">
             <h3>2. Earn</h3>
             <p>Collect mooncoins for every bit of effort.</p>
           </div>
+
           <div class="step">
             <h3>3. Unlock</h3>
             <p>Trade mooncoins for chess courses.</p>
@@ -50,11 +62,16 @@
   </div>
 
   <script>
-    // Show the player's saved mooncoins in the sidebar
     try {
-      var coins = JSON.parse(localStorage.getItem("moonchess.coins"));
-      document.getElementById("side-coins").textContent = typeof coins === "number" ? coins : 0;
-    } catch (e) {}
+      const coins = JSON.parse(
+        localStorage.getItem("moonchess.coins")
+      );
+
+      document.getElementById("side-coins").textContent =
+        Number.isFinite(coins) && coins >= 0 ? coins : 0;
+    } catch (e) {
+      document.getElementById("side-coins").textContent = "0";
+    }
   </script>
 </body>
 </html>
