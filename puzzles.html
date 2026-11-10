@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Puzzles | Moonchess</title>
-  <link rel="icon" type="image/png" href="Untitled Design.png">
+  <link rel="icon" type="image/png" href="favicon.png">
   <meta name="description" content="Solve chess puzzles and earn mooncoins.">
   <link rel="stylesheet" href="style.css">
 
@@ -276,8 +276,8 @@
             <p><strong>How to play:</strong></p>
             <p>
               Drag a piece to its destination, or click a piece
-              and then its destination square. Each puzzle earns
-              10 mooncoins the first time you solve it.
+              and then its destination square. Finish the checkmate sequence to earn
+              10 mooncoins the first time you solve each puzzle.
             </p>
           </div>
 
@@ -297,551 +297,249 @@
     </main>
   </div>
 
-  <script>
-    "use strict";
+  <script src="mate1.js"></script>
+  <script src="mate2.js"></script>
+  <script src="mate3.js"></script>
+  <script type="module">
+"use strict";
+import { Chess } from "https://cdn.jsdelivr.net/npm/chess.js@1.4.0/+esm";
 
-    const FILES = "abcdefgh";
+const FILES = "abcdefgh";
+const PIECE_NAMES = {k:"king",q:"queen",r:"rook",b:"bishop",n:"knight",p:"pawn"};
+const COIN_KEY = "moonchess.coins";
+const SOLVED_KEY = "moonchess.solved";
+const boardEl = document.getElementById("board");
+const countEl = document.getElementById("puzzle-count");
+const titleEl = document.getElementById("puzzle-title");
+const statusEl = document.getElementById("status");
+const coinEl = document.getElementById("coin-count");
+const hintBtn = document.getElementById("hint-btn");
+const restartBtn = document.getElementById("restart-btn");
+const nextBtn = document.getElementById("next-btn");
 
-    const PIECE_NAMES = {
-      k: "king",
-      q: "queen",
-      r: "rook",
-      b: "bishop",
-      n: "knight",
-      p: "pawn"
-    };
+function readStore(key, fallback) {
+  try { const raw=localStorage.getItem(key); return raw===null ? fallback : JSON.parse(raw); }
+  catch { return fallback; }
+}
+function writeStore(key,value) { try { localStorage.setItem(key,JSON.stringify(value)); } catch {} }
+let coins = readStore(COIN_KEY,0);
+if (!Number.isFinite(coins) || coins<0) coins=0;
+let solvedIds = readStore(SOLVED_KEY,[]);
+if (!Array.isArray(solvedIds)) solvedIds=[];
+const solvedSet = new Set(solvedIds);
+const pools = [
+  ...MOONCHESS_MATEIN1.map(p=>({...p, mate:1})),
+  ...MOONCHESS_MATEIN2.map(p=>({...p, mate:2})),
+  ...MOONCHESS_MATEIN3.map(p=>({...p, mate:3}))
+];
+let bag=[];
+let puzzle=null;
+let chess=null;
+let playerColor="w";
+let step=0;
+let selected=null;
+let hintSquare=null;
+let lastMove=[];
+let solved=false;
+let thinking=false;
+let runId=0;
+let drag=null;
+let suppressClick=false;
+let clickResetTimer=null;
 
-    const GLYPHS = {
-      K: "♔", Q: "♕", R: "♖",
-      B: "♗", N: "♘", P: "♙",
-      k: "♚", q: "♛", r: "♜",
-      b: "♝", n: "♞", p: "♟"
-    };
-
-    const PUZZLES = [
-      {
-        id: "scholars-mate",
-        title: "Scholar's mate",
-        fen: "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w - - 4 4",
-        move: "h5f7"
-      },
-      {
-        id: "back-rank-mate",
-        title: "Back-rank mate",
-        fen: "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
-        move: "a1a8"
-      },
-      {
-        id: "fools-mate",
-        title: "Fool's mate",
-        fen: "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b - - 0 2",
-        move: "d8h4"
-      },
-      {
-        id: "smothered-mate",
-        title: "Smothered mate",
-        fen: "6rk/6pp/8/6N1/8/8/8/6K1 w - - 0 1",
-        move: "g5f7"
-      },
-      {
-        id: "queen-mate",
-        title: "Queen and king mate",
-        fen: "7k/5K2/6Q1/8/8/8/8/8 w - - 0 1",
-        move: "g6g7"
-      }
-    ];
-
-    const COIN_KEY = "moonchess.coins";
-    const SOLVED_KEY = "moonchess.solved";
-
-    const boardEl = document.getElementById("board");
-    const countEl = document.getElementById("puzzle-count");
-    const titleEl = document.getElementById("puzzle-title");
-    const statusEl = document.getElementById("status");
-    const coinEl = document.getElementById("coin-count");
-    const hintBtn = document.getElementById("hint-btn");
-    const restartBtn = document.getElementById("restart-btn");
-    const nextBtn = document.getElementById("next-btn");
-
-    function readStore(key, fallback) {
-      try {
-        const raw = localStorage.getItem(key);
-        return raw === null ? fallback : JSON.parse(raw);
-      } catch {
-        return fallback;
-      }
+function sqIndex(name) { return (8-Number(name[1]))*8+FILES.indexOf(name[0]); }
+function sqName(i) { return FILES[i%8]+(8-Math.floor(i/8)); }
+function setStatus(message,type="") { statusEl.textContent=message; statusEl.className=type; }
+function updateCoins() { coinEl.textContent=coins; }
+function shuffle(a) {
+  for(let i=a.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function nextRandomPuzzle() {
+  if (!bag.length) bag=shuffle(pools.slice());
+  return bag.pop();
+}
+function pieceAt(index) {
+  const piece=chess.get(sqName(index));
+  return piece ? {color:piece.color,type:piece.type} : null;
+}
+function playUci(uci) {
+  try { return chess.move({from:uci.slice(0,2),to:uci.slice(2,4),promotion:uci[4]||"q"}); }
+  catch { return null; }
+}
+function showTurn() {
+  setStatus((playerColor==="w" ? "White" : "Black") + " to move. Find the mate in " + puzzle.mate + ".");
+}
+function loadPuzzle(newPuzzle) {
+  cleanupDrag();
+  runId++;
+  puzzle=newPuzzle;
+  try { chess=new Chess(puzzle.fen); }
+  catch(e) { console.error("Bad puzzle FEN",puzzle.id,e); setStatus("Could not load this puzzle. Try Next puzzle.","bad"); return; }
+  playerColor=chess.turn();
+  step=0; selected=null; hintSquare=null; lastMove=[]; solved=false; thinking=false;
+  titleEl.textContent="Mate in " + puzzle.mate;
+  countEl.textContent=pools.length + " puzzles · Random order";
+  nextBtn.classList.remove("primary");
+  hintBtn.disabled=false;
+  showTurn();
+  renderBoard();
+}
+function renderBoard() {
+  if (!chess) return;
+  boardEl.replaceChildren();
+  const flipped=playerColor==="b";
+  for(let display=0;display<64;display++) {
+    const i=flipped ? 63-display : display;
+    const row=Math.floor(i/8),col=i%8;
+    const square=document.createElement("button");
+    square.type="button"; square.dataset.index=i;
+    square.className="sq "+((row+col)%2===0?"light":"dark");
+    if(selected===i) square.classList.add("selected");
+    if(hintSquare===i) square.classList.add("hint");
+    if(lastMove.includes(i)) square.classList.add("last");
+    const piece=pieceAt(i);
+    square.setAttribute("aria-label",piece ? `${sqName(i)} ${piece.color==="w"?"white":"black"} ${PIECE_NAMES[piece.type]}` : sqName(i));
+    if(piece) {
+      const span=document.createElement("span");
+      span.className="piece "+piece.color;
+      span.setAttribute("aria-hidden","true");
+      const img=document.createElement("img");
+      img.src=(piece.color==="w"?"white-":"black-")+PIECE_NAMES[piece.type]+".png";
+      img.alt=""; img.draggable=false;
+      img.style.width="90%"; img.style.height="90%";
+      img.style.objectFit="contain"; img.style.pointerEvents="none";
+      span.appendChild(img); square.appendChild(span);
     }
-
-    function writeStore(key, value) {
-      try {
-        localStorage.setItem(key, JSON.stringify(value));
-      } catch {}
-    }
-
-    let coins = readStore(COIN_KEY, 0);
-
-    if (!Number.isFinite(coins) || coins < 0) {
-      coins = 0;
-    }
-
-    let solvedIds = readStore(SOLVED_KEY, []);
-
-    if (!Array.isArray(solvedIds)) {
-      solvedIds = [];
-    }
-
-    let currentIdx = 0;
-    let state;
-
-    function sqIndex(name) {
-      return (8 - Number(name[1])) * 8 +
-        FILES.indexOf(name[0]);
-    }
-
-    function sqName(i) {
-      return FILES[i % 8] +
-        (8 - Math.floor(i / 8));
-    }
-
-    function isWhite(piece) {
-      return piece !== "" &&
-        piece === piece.toUpperCase();
-    }
-
-    function parseFen(fen) {
-      const [placement, turn] = fen.split(" ");
-      const board = [];
-
-      for (const ch of placement.replace(/\//g, "")) {
-        if (/^[1-8]$/.test(ch)) {
-          board.push(...Array(Number(ch)).fill(""));
-        } else {
-          board.push(ch);
-        }
-      }
-
-      if (board.length !== 64) {
-        throw new Error("Invalid puzzle position");
-      }
-
-      return { board, turn };
-    }
-
-    function applyMove(board, uci) {
-      const next = board.slice();
-      const from = sqIndex(uci.slice(0, 2));
-      const to = sqIndex(uci.slice(2, 4));
-
-      next[to] = next[from];
-      next[from] = "";
-
-      return next;
-    }
-
-    function setStatus(message, type = "") {
-      statusEl.textContent = message;
-      statusEl.className = type;
-    }
-
-    function updateCoins() {
-      coinEl.textContent = coins;
-    }
-
-    function loadPuzzle(idx) {
-      cleanupDrag();
-
-      currentIdx =
-        ((idx % PUZZLES.length) + PUZZLES.length) %
-        PUZZLES.length;
-
-      const puzzle = PUZZLES[currentIdx];
-      const parsed = parseFen(puzzle.fen);
-
-      state = {
-        board: parsed.board,
-        turn: parsed.turn,
-        selected: null,
-        hintSq: null,
-        lastMove: [],
-        solved: false
-      };
-
-      countEl.textContent =
-        `Puzzle ${currentIdx + 1} of ${PUZZLES.length}`;
-
-      titleEl.textContent = puzzle.title;
-
-      setStatus(
-        parsed.turn === "w"
-          ? "White to move."
-          : "Black to move."
-      );
-
-      nextBtn.classList.remove("primary");
-      hintBtn.disabled = false;
-
-      renderBoard();
-    }
-
-    function renderBoard() {
-      boardEl.replaceChildren();
-
-      const flipped = state.turn === "b";
-
-      for (let step = 0; step < 64; step++) {
-        const i = flipped ? 63 - step : step;
-        const row = Math.floor(i / 8);
-        const col = i % 8;
-
-        const square = document.createElement("button");
-        square.type = "button";
-        square.dataset.index = i;
-
-        square.className =
-          "sq " +
-          ((row + col) % 2 === 0 ? "light" : "dark");
-
-        if (state.selected === i) {
-          square.classList.add("selected");
-        }
-
-        if (state.hintSq === i) {
-          square.classList.add("hint");
-        }
-
-        if (state.lastMove.includes(i)) {
-          square.classList.add("last");
-        }
-
-        const piece = state.board[i];
-
-        square.setAttribute(
-          "aria-label",
-          piece
-            ? `${sqName(i)} ${isWhite(piece) ? "white" : "black"} ${PIECE_NAMES[piece.toLowerCase()]}`
-            : sqName(i)
-        );
-
-        if (piece) {
-          const span = document.createElement("span");
-
-          span.className =
-            "piece " + (isWhite(piece) ? "w" : "b");
-
-         const img = document.createElement("img");
-img.src = (isWhite(piece) ? "white-" : "black-")
-  + PIECE_NAMES[piece.toLowerCase()] + ".png";
-img.alt = "";
-img.draggable = false;
-img.style.width = "90%";
-img.style.height = "90%";
-img.style.objectFit = "contain";
-img.style.pointerEvents = "none";
-span.appendChild(img);
-          span.setAttribute("aria-hidden", "true");
-
-          square.appendChild(span);
-        }
-
-        square.addEventListener("click", () => {
-          handleSquareClick(i);
-        });
-
-        boardEl.appendChild(square);
-      }
-    }
-
-    function handleSquareClick(idx) {
-      if (state.solved) return;
-
-      const piece = state.board[idx];
-
-      const isPlayerPiece =
-        piece !== "" &&
-        (state.turn === "w"
-          ? isWhite(piece)
-          : !isWhite(piece));
-
-      if (state.selected === null) {
-        if (isPlayerPiece) {
-          state.selected = idx;
-          state.hintSq = null;
-          renderBoard();
-        }
-        return;
-      }
-
-      if (state.selected === idx) {
-        state.selected = null;
-        renderBoard();
-        return;
-      }
-
-      if (isPlayerPiece) {
-        state.selected = idx;
-        renderBoard();
-        return;
-      }
-
-      const attempt =
-        sqName(state.selected) + sqName(idx);
-
-      const puzzle = PUZZLES[currentIdx];
-
-      if (attempt === puzzle.move) {
-        state.board = applyMove(state.board, attempt);
-        state.lastMove = [state.selected, idx];
-        state.selected = null;
-        state.hintSq = null;
-        state.solved = true;
-
-        hintBtn.disabled = true;
-        nextBtn.classList.add("primary");
-
-        if (!solvedIds.includes(puzzle.id)) {
-          solvedIds.push(puzzle.id);
-          writeStore(SOLVED_KEY, solvedIds);
-
-          coins += 10;
-          writeStore(COIN_KEY, coins);
-          updateCoins();
-
-          setStatus("Solved! +10 mooncoins.", "good");
-        } else {
-          setStatus(
-            "Solved! You already earned coins for this puzzle.",
-            "good"
-          );
-        }
-      } else {
-        state.selected = null;
-        setStatus("Not quite — try again!", "bad");
-
-        boardEl.classList.remove("shake");
-        void boardEl.offsetWidth;
-        boardEl.classList.add("shake");
-      }
-
-      renderBoard();
-    }
-
-    hintBtn.addEventListener("click", () => {
-      if (state.solved) return;
-
-      const move = PUZZLES[currentIdx].move;
-      state.hintSq = sqIndex(move.slice(0, 2));
-
-      setStatus("Hint: Move the highlighted piece.");
-      renderBoard();
-    });
-
-    restartBtn.addEventListener("click", () => {
-      loadPuzzle(currentIdx);
-    });
-
-    nextBtn.addEventListener("click", () => {
-      loadPuzzle(currentIdx + 1);
-    });
-
-    // Drag-and-drop for mouse, touch, and pen.
-
-    let drag = null;
-    let suppressClick = false;
-    let clickResetTimer = null;
-
-    function findBoardSquare(x, y) {
-      const element = document.elementFromPoint(x, y);
-      const square = element?.closest(".sq");
-
-      return square && boardEl.contains(square)
-        ? square
-        : null;
-    }
-
-    function clearDropTargets() {
-      boardEl.querySelectorAll(".drop-target").forEach(square => {
-        square.classList.remove("drop-target");
-      });
-    }
-
-    function cleanupDrag() {
-      if (!drag) return;
-
-      const { sourceSquare, pointerId, ghost } = drag;
-
-      ghost?.remove();
-      sourceSquare.classList.remove("dragging");
-      clearDropTargets();
-
-      if (sourceSquare.hasPointerCapture?.(pointerId)) {
-        sourceSquare.releasePointerCapture(pointerId);
-      }
-
-      drag = null;
-    }
-
-    boardEl.addEventListener("pointerdown", event => {
-      if (
-        state.solved ||
-        drag ||
-        !event.isPrimary ||
-        event.button !== 0
-      ) {
-        return;
-      }
-
-      const square = event.target.closest(".sq");
-
-      if (!square || !square.querySelector(".piece")) {
-        return;
-      }
-
-      const from = Number(square.dataset.index);
-      const piece = state.board[from];
-
-      if (
-        !piece ||
-        (state.turn === "w") !== isWhite(piece)
-      ) {
-        return;
-      }
-
-      drag = {
-        pointerId: event.pointerId,
-        from,
-        piece,
-        sourceSquare: square,
-        startX: event.clientX,
-        startY: event.clientY,
-        moved: false,
-        ghost: null
-      };
-
-      square.setPointerCapture(event.pointerId);
-    });
-
-    document.addEventListener("pointermove", event => {
-      if (
-        !drag ||
-        event.pointerId !== drag.pointerId
-      ) {
-        return;
-      }
-
-      if (!drag.moved) {
-        const distance = Math.hypot(
-          event.clientX - drag.startX,
-          event.clientY - drag.startY
-        );
-
-        if (distance < 5) return;
-
-        drag.moved = true;
-
-        const size =
-          drag.sourceSquare.getBoundingClientRect().width;
-
-        const ghost = document.createElement("div");
-
-        ghost.className =
-          "drag-piece " +
-          (isWhite(drag.piece) ? "w" : "b");
-
-        const img = document.createElement("img");
-img.src = (isWhite(drag.piece) ? "white-" : "black-")
-  + PIECE_NAMES[drag.piece.toLowerCase()] + ".png";
-img.alt = "";
-img.draggable = false;
-img.style.width = "100%";
-img.style.height = "100%";
-img.style.objectFit = "contain";
-ghost.appendChild(img);
-        ghost.style.width = size + "px";
-        ghost.style.height = size + "px";
-        ghost.style.fontSize = size * 0.8 + "px";
-
-        document.body.appendChild(ghost);
-
-        drag.ghost = ghost;
-        drag.sourceSquare.classList.add("dragging");
-      }
-
-      event.preventDefault();
-
-      drag.ghost.style.left = event.clientX + "px";
-      drag.ghost.style.top = event.clientY + "px";
-
-      clearDropTargets();
-
-      const target = findBoardSquare(
-        event.clientX,
-        event.clientY
-      );
-
-      if (target && target !== drag.sourceSquare) {
-        target.classList.add("drop-target");
-      }
-    }, { passive: false });
-
-    document.addEventListener("pointerup", event => {
-      if (
-        !drag ||
-        event.pointerId !== drag.pointerId
-      ) {
-        return;
-      }
-
-      const from = drag.from;
-      const wasMoved = drag.moved;
-
-      const target = wasMoved
-        ? findBoardSquare(event.clientX, event.clientY)
-        : null;
-
-      const to = target
-        ? Number(target.dataset.index)
-        : null;
-
-      cleanupDrag();
-
-      if (!wasMoved) return;
-
-      suppressClick = true;
-      clearTimeout(clickResetTimer);
-
-      clickResetTimer = setTimeout(() => {
-        suppressClick = false;
-      }, 350);
-
-      if (to === null || to === from) return;
-
-      state.selected = from;
-      handleSquareClick(to);
-    });
-
-    document.addEventListener("pointercancel", event => {
-      if (
-        drag &&
-        event.pointerId === drag.pointerId
-      ) {
-        cleanupDrag();
-      }
-    });
-
-    window.addEventListener("blur", cleanupDrag);
-
-    boardEl.addEventListener("click", event => {
-      if (!suppressClick) return;
-
-      event.preventDefault();
-      event.stopImmediatePropagation();
-
-      suppressClick = false;
-      clearTimeout(clickResetTimer);
-    }, true);
-
-    updateCoins();
-    loadPuzzle(0);
+    square.addEventListener("click",()=>handleSquareClick(i));
+    boardEl.appendChild(square);
+  }
+}
+function completePuzzle() {
+  solved=true; thinking=false;
+  hintBtn.disabled=true;
+  nextBtn.classList.add("primary");
+  const key="lichess:"+puzzle.id;
+  if (!solvedSet.has(key)) {
+    solvedSet.add(key);
+    writeStore(SOLVED_KEY,Array.from(solvedSet));
+    coins+=10; writeStore(COIN_KEY,coins); updateCoins();
+    setStatus("Checkmate! +10 mooncoins.","good");
+  } else setStatus("Checkmate! You've already earned coins for this puzzle.","good");
+}
+function handleSquareClick(index) {
+  if (!chess || solved || thinking) return;
+  const piece=pieceAt(index);
+  const own=piece && piece.color===playerColor;
+  if(selected===null) { if(own) {selected=index;hintSquare=null;renderBoard();} return; }
+  if(selected===index) {selected=null;renderBoard();return;}
+  if(own) {selected=index;renderBoard();return;}
+  const attempt=sqName(selected)+sqName(index);
+  const expected=puzzle.moves[step];
+  // Match the exact solution; queen promotion is the default when no promotion is specified.
+  if (attempt!==expected.slice(0,4)) {
+    selected=null; setStatus("Not quite — try again!","bad");
+    boardEl.classList.remove("shake"); void boardEl.offsetWidth; boardEl.classList.add("shake");
+    renderBoard(); return;
+  }
+  const moved=playUci(expected);
+  if (!moved) { selected=null;setStatus("Puzzle move error. Try Next puzzle.","bad");renderBoard();return; }
+  lastMove=[sqIndex(expected.slice(0,2)),sqIndex(expected.slice(2,4))];
+  selected=null;hintSquare=null;step++;
+  renderBoard();
+  if(step>=puzzle.moves.length) {
+    if(chess.isCheckmate()) completePuzzle();
+    else setStatus("Puzzle data error: final position is not checkmate.","bad");
+    return;
+  }
+  thinking=true;
+  setStatus("Good move! Opponent is responding...");
+  const thisRun=runId;
+  setTimeout(()=>{
+    if(thisRun!==runId) return;
+    const reply=puzzle.moves[step];
+    if(!playUci(reply)) {thinking=false;setStatus("Opponent move error. Try Next puzzle.","bad");return;}
+    lastMove=[sqIndex(reply.slice(0,2)),sqIndex(reply.slice(2,4))];
+    step++;thinking=false;
+    showTurn();renderBoard();
+  },500);
+}
+hintBtn.addEventListener("click",()=>{
+  if(!puzzle || solved || thinking) return;
+  const move=puzzle.moves[step];
+  hintSquare=sqIndex(move.slice(0,2));
+  setStatus("Hint: Move the highlighted piece.");renderBoard();
+});
+restartBtn.addEventListener("click",()=>{if(puzzle)loadPuzzle(puzzle);});
+nextBtn.addEventListener("click",()=>{if(pools.length)loadPuzzle(nextRandomPuzzle());});
+
+function findBoardSquare(x,y) {
+  const el=document.elementFromPoint(x,y);
+  const sq=el?.closest(".sq");
+  return sq && boardEl.contains(sq) ? sq : null;
+}
+function clearDropTargets() { boardEl.querySelectorAll(".drop-target").forEach(sq=>sq.classList.remove("drop-target")); }
+function cleanupDrag() {
+  if(!drag)return;
+  const {sourceSquare,pointerId,ghost}=drag;
+  ghost?.remove(); sourceSquare.classList.remove("dragging");clearDropTargets();
+  if(sourceSquare.hasPointerCapture?.(pointerId))sourceSquare.releasePointerCapture(pointerId);
+  drag=null;
+}
+boardEl.addEventListener("pointerdown",event=>{
+  if(!chess||solved||thinking||drag||!event.isPrimary||event.button!==0)return;
+  const square=event.target.closest(".sq");
+  if(!square||!square.querySelector(".piece"))return;
+  const from=Number(square.dataset.index),piece=pieceAt(from);
+  if(!piece||piece.color!==playerColor)return;
+  drag={pointerId:event.pointerId,from,piece,sourceSquare:square,startX:event.clientX,startY:event.clientY,moved:false,ghost:null};
+  square.setPointerCapture(event.pointerId);
+});
+document.addEventListener("pointermove",event=>{
+  if(!drag||event.pointerId!==drag.pointerId)return;
+  if(!drag.moved) {
+    if(Math.hypot(event.clientX-drag.startX,event.clientY-drag.startY)<5)return;
+    drag.moved=true;
+    const size=drag.sourceSquare.getBoundingClientRect().width;
+    const ghost=document.createElement("div");
+    ghost.className="drag-piece "+drag.piece.color;
+    const img=document.createElement("img");
+    img.src=(drag.piece.color==="w"?"white-":"black-")+PIECE_NAMES[drag.piece.type]+".png";
+    img.alt="";img.draggable=false;
+    img.style.width="100%";img.style.height="100%";img.style.objectFit="contain";
+    ghost.appendChild(img);
+    ghost.style.width=size+"px";ghost.style.height=size+"px";
+    document.body.appendChild(ghost);drag.ghost=ghost;
+    drag.sourceSquare.classList.add("dragging");
+  }
+  event.preventDefault();
+  drag.ghost.style.left=event.clientX+"px";drag.ghost.style.top=event.clientY+"px";
+  clearDropTargets();
+  const target=findBoardSquare(event.clientX,event.clientY);
+  if(target&&target!==drag.sourceSquare)target.classList.add("drop-target");
+},{passive:false});
+document.addEventListener("pointerup",event=>{
+  if(!drag||event.pointerId!==drag.pointerId)return;
+  const from=drag.from,wasMoved=drag.moved;
+  const target=wasMoved?findBoardSquare(event.clientX,event.clientY):null;
+  const to=target?Number(target.dataset.index):null;
+  cleanupDrag();
+  if(!wasMoved)return;
+  suppressClick=true;clearTimeout(clickResetTimer);
+  clickResetTimer=setTimeout(()=>{suppressClick=false;},350);
+  if(to===null||to===from)return;
+  selected=from;handleSquareClick(to);
+});
+document.addEventListener("pointercancel",event=>{if(drag&&event.pointerId===drag.pointerId)cleanupDrag();});
+window.addEventListener("blur",cleanupDrag);
+boardEl.addEventListener("click",event=>{
+  if(!suppressClick)return;
+  event.preventDefault();event.stopImmediatePropagation();
+  suppressClick=false;clearTimeout(clickResetTimer);
+},true);
+updateCoins();
+if(!pools.length)setStatus("No puzzles found. Check mate1.js, mate2.js, and mate3.js.","bad");
+else loadPuzzle(nextRandomPuzzle());
   </script>
 </body>
 </html>
