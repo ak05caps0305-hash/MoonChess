@@ -29,6 +29,7 @@
       border-radius: 8px;
       overflow: hidden;
       box-shadow: 0 0 0 3px #2E1A4A;
+      touch-action: none;
     }
 
     .puzzle-panel {
@@ -84,6 +85,7 @@
       line-height: 1;
       cursor: pointer;
       user-select: none;
+      touch-action: none;
     }
 
     .sq.light {
@@ -111,6 +113,11 @@
       position: relative;
       z-index: 1;
       font-family: "DejaVu Sans", "Segoe UI Symbol", sans-serif;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      pointer-events: none;
     }
 
     .piece.w {
@@ -124,6 +131,37 @@
     .piece.b {
       color: #1E1033;
       text-shadow: 0 1px 1px #F5F0FA;
+    }
+
+    .sq.dragging .piece {
+      opacity: 0;
+    }
+
+    .drag-piece {
+      position: fixed;
+      z-index: 9999;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "DejaVu Sans", "Segoe UI Symbol", sans-serif;
+      line-height: 1;
+      transform: translate(-50%, -65%) scale(1.2);
+      filter: drop-shadow(0 12px 8px rgba(0, 0, 0, 0.6));
+    }
+
+    .drag-piece.w {
+      color: #FFF6D6;
+      text-shadow: 0 2px 2px #1E1033;
+    }
+
+    .drag-piece.b {
+      color: #1E1033;
+      text-shadow: 0 1px 1px #F5F0FA;
+    }
+
+    .sq.drop-target {
+      box-shadow: inset 0 0 0 4px #FFD84D;
     }
 
     .controls {
@@ -174,7 +212,9 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .board.shake { animation: none; }
+      .board.shake {
+        animation: none;
+      }
     }
 
     @media (max-width: 1000px) {
@@ -219,10 +259,12 @@
 
     <main class="content">
       <div class="puzzle-wrap">
-
-        <div id="board" class="board"
-             role="group"
-             aria-label="Chess board"></div>
+        <div
+          id="board"
+          class="board"
+          role="group"
+          aria-label="Chess board"
+        ></div>
 
         <div class="puzzle-panel">
           <p id="puzzle-count"></p>
@@ -232,8 +274,8 @@
           <div class="instructions">
             <p><strong>How to play:</strong></p>
             <p>
-              Click a piece, then its destination square
-              to find the best move. Each puzzle earns
+              Drag a piece to its destination, or click a piece
+              and then its destination square. Each puzzle earns
               10 mooncoins the first time you solve it.
             </p>
           </div>
@@ -275,7 +317,6 @@
       b: "♝", n: "♞", p: "♟"
     };
 
-    // Single-move puzzles with predefined solutions.
     const PUZZLES = [
       {
         id: "scholars-mate",
@@ -387,7 +428,6 @@
 
     function applyMove(board, uci) {
       const next = board.slice();
-
       const from = sqIndex(uci.slice(0, 2));
       const to = sqIndex(uci.slice(2, 4));
 
@@ -407,6 +447,8 @@
     }
 
     function loadPuzzle(idx) {
+      cleanupDrag();
+
       currentIdx =
         ((idx % PUZZLES.length) + PUZZLES.length) %
         PUZZLES.length;
@@ -538,7 +580,6 @@
 
       if (attempt === puzzle.move) {
         state.board = applyMove(state.board, attempt);
-
         state.lastMove = [state.selected, idx];
         state.selected = null;
         state.hintSq = null;
@@ -564,7 +605,6 @@
         }
       } else {
         state.selected = null;
-
         setStatus("Not quite — try again!", "bad");
 
         boardEl.classList.remove("shake");
@@ -579,7 +619,6 @@
       if (state.solved) return;
 
       const move = PUZZLES[currentIdx].move;
-
       state.hintSq = sqIndex(move.slice(0, 2));
 
       setStatus("Hint: Move the highlighted piece.");
@@ -594,173 +633,195 @@
       loadPuzzle(currentIdx + 1);
     });
 
-    
-// Chess piece drag-and-drop
+    // Drag-and-drop for mouse, touch, and pen.
 
-let drag = null;
-let suppressClick = false;
+    let drag = null;
+    let suppressClick = false;
+    let clickResetTimer = null;
 
-function findBoardSquare(x, y) {
-  const element = document.elementFromPoint(x, y);
-  const square = element?.closest(".sq");
+    function findBoardSquare(x, y) {
+      const element = document.elementFromPoint(x, y);
+      const square = element?.closest(".sq");
 
-  if (!square || !boardEl.contains(square)) {
-    return null;
-  }
+      return square && boardEl.contains(square)
+        ? square
+        : null;
+    }
 
-  return square;
-}
+    function clearDropTargets() {
+      boardEl.querySelectorAll(".drop-target").forEach(square => {
+        square.classList.remove("drop-target");
+      });
+    }
 
-function clearDropTargets() {
-  boardEl.querySelectorAll(".drop-target").forEach(sq => {
-    sq.classList.remove("drop-target");
-  });
-}
+    function cleanupDrag() {
+      if (!drag) return;
 
-function cleanupDrag() {
-  if (!drag) return;
+      const { sourceSquare, pointerId, ghost } = drag;
 
-  drag.ghost?.remove();
+      ghost?.remove();
+      sourceSquare.classList.remove("dragging");
+      clearDropTargets();
 
-  if (drag.sourceSquare?.isConnected) {
-    drag.sourceSquare.classList.remove("dragging");
-  }
+      if (sourceSquare.hasPointerCapture?.(pointerId)) {
+        sourceSquare.releasePointerCapture(pointerId);
+      }
 
-  clearDropTargets();
+      drag = null;
+    }
 
-  drag = null;
-}
+    boardEl.addEventListener("pointerdown", event => {
+      if (
+        state.solved ||
+        drag ||
+        !event.isPrimary ||
+        event.button !== 0
+      ) {
+        return;
+      }
 
-boardEl.addEventListener("pointerdown", event => {
-  if (state.solved || drag || !event.isPrimary) return;
+      const square = event.target.closest(".sq");
 
-  const square = event.target.closest(".sq");
-  if (!square) return;
+      if (!square || !square.querySelector(".piece")) {
+        return;
+      }
 
-  const pieceElement = square.querySelector(".piece");
-  if (!pieceElement) return;
+      const from = Number(square.dataset.index);
+      const piece = state.board[from];
 
-  const squareIndex = Number(square.dataset.index);
-  const piece = state.board[squareIndex];
+      if (
+        !piece ||
+        (state.turn === "w") !== isWhite(piece)
+      ) {
+        return;
+      }
 
-  const isPlayerPiece =
-    piece &&
-    (state.turn === "w"
-      ? isWhite(piece)
-      : !isWhite(piece));
+      drag = {
+        pointerId: event.pointerId,
+        from,
+        piece,
+        sourceSquare: square,
+        startX: event.clientX,
+        startY: event.clientY,
+        moved: false,
+        ghost: null
+      };
 
-  if (!isPlayerPiece) return;
+      square.setPointerCapture(event.pointerId);
+    });
 
-  drag = {
-    pointerId: event.pointerId,
-    from: squareIndex,
-    startX: event.clientX,
-    startY: event.clientY,
-    sourceSquare: square,
-    piece,
-    ghost: null,
-    moved: false
-  };
-});
+    document.addEventListener("pointermove", event => {
+      if (
+        !drag ||
+        event.pointerId !== drag.pointerId
+      ) {
+        return;
+      }
 
-document.addEventListener("pointermove", event => {
-  if (!drag || event.pointerId !== drag.pointerId) return;
+      if (!drag.moved) {
+        const distance = Math.hypot(
+          event.clientX - drag.startX,
+          event.clientY - drag.startY
+        );
 
-  const distance = Math.hypot(
-    event.clientX - drag.startX,
-    event.clientY - drag.startY
-  );
+        if (distance < 5) return;
 
-  if (!drag.moved && distance < 6) return;
+        drag.moved = true;
 
-  if (!drag.moved) {
-    drag.moved = true;
+        const size =
+          drag.sourceSquare.getBoundingClientRect().width;
 
-    const size = drag.sourceSquare.getBoundingClientRect().width;
+        const ghost = document.createElement("div");
 
-    const ghost = document.createElement("div");
-    ghost.className =
-      "drag-piece " + (isWhite(drag.piece) ? "w" : "b");
+        ghost.className =
+          "drag-piece " +
+          (isWhite(drag.piece) ? "w" : "b");
 
-    ghost.textContent = GLYPHS[drag.piece];
-    ghost.style.width = size + "px";
-    ghost.style.height = size + "px";
-    ghost.style.fontSize = size * 0.8 + "px";
+        ghost.textContent = GLYPHS[drag.piece];
+        ghost.style.width = size + "px";
+        ghost.style.height = size + "px";
+        ghost.style.fontSize = size * 0.8 + "px";
 
-    document.body.appendChild(ghost);
+        document.body.appendChild(ghost);
 
-    drag.ghost = ghost;
-    drag.sourceSquare.classList.add("dragging");
-  }
+        drag.ghost = ghost;
+        drag.sourceSquare.classList.add("dragging");
+      }
 
-  event.preventDefault();
+      event.preventDefault();
 
-  drag.ghost.style.left = event.clientX + "px";
-  drag.ghost.style.top = event.clientY + "px";
+      drag.ghost.style.left = event.clientX + "px";
+      drag.ghost.style.top = event.clientY + "px";
 
-  clearDropTargets();
+      clearDropTargets();
 
-  const target = findBoardSquare(
-    event.clientX,
-    event.clientY
-  );
+      const target = findBoardSquare(
+        event.clientX,
+        event.clientY
+      );
 
-  if (target && target !== drag.sourceSquare) {
-    target.classList.add("drop-target");
-  }
-}, { passive: false });
+      if (target && target !== drag.sourceSquare) {
+        target.classList.add("drop-target");
+      }
+    }, { passive: false });
 
-document.addEventListener("pointerup", event => {
-  if (!drag || event.pointerId !== drag.pointerId) return;
+    document.addEventListener("pointerup", event => {
+      if (
+        !drag ||
+        event.pointerId !== drag.pointerId
+      ) {
+        return;
+      }
 
-  const currentDrag = drag;
-  const wasMoved = currentDrag.moved;
+      const from = drag.from;
+      const wasMoved = drag.moved;
 
-  const target = wasMoved
-    ? findBoardSquare(event.clientX, event.clientY)
-    : null;
+      const target = wasMoved
+        ? findBoardSquare(event.clientX, event.clientY)
+        : null;
 
-  const targetIndex = target
-    ? Number(target.dataset.index)
-    : null;
+      const to = target
+        ? Number(target.dataset.index)
+        : null;
 
-  cleanupDrag();
+      cleanupDrag();
 
-  if (!wasMoved) return;
+      if (!wasMoved) return;
 
-  suppressClick = true;
+      suppressClick = true;
+      clearTimeout(clickResetTimer);
 
-  // Prevent the release click from selecting another piece.
-  setTimeout(() => {
-    suppressClick = false;
-  }, 0);
+      clickResetTimer = setTimeout(() => {
+        suppressClick = false;
+      }, 350);
 
-  if (targetIndex === null ||
-      targetIndex === currentDrag.from) {
-    return;
-  }
+      if (to === null || to === from) return;
 
-  state.selected = currentDrag.from;
-  handleSquareClick(targetIndex);
-});
+      state.selected = from;
+      handleSquareClick(to);
+    });
 
-document.addEventListener("pointercancel", event => {
-  if (drag && event.pointerId === drag.pointerId) {
-    cleanupDrag();
-  }
-});
+    document.addEventListener("pointercancel", event => {
+      if (
+        drag &&
+        event.pointerId === drag.pointerId
+      ) {
+        cleanupDrag();
+      }
+    });
 
-window.addEventListener("blur", cleanupDrag);
+    window.addEventListener("blur", cleanupDrag);
 
-// Prevent a drag release from also triggering a click.
-boardEl.addEventListener("click", event => {
-  if (suppressClick) {
-    event.stopImmediatePropagation();
-    suppressClick = false;
-  }
-}, true);
+    boardEl.addEventListener("click", event => {
+      if (!suppressClick) return;
 
-    
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      suppressClick = false;
+      clearTimeout(clickResetTimer);
+    }, true);
+
     updateCoins();
     loadPuzzle(0);
   </script>
