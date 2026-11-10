@@ -746,7 +746,15 @@ span.appendChild(img);
           "drag-piece " +
           (isWhite(drag.piece) ? "w" : "b");
 
-        ghost.textContent = GLYPHS[drag.piece];
+        const img = document.createElement("img");
+img.src = (isWhite(drag.piece) ? "white-" : "black-")
+  + PIECE_NAMES[drag.piece.toLowerCase()] + ".png";
+img.alt = "";
+img.draggable = false;
+img.style.width = "100%";
+img.style.height = "100%";
+img.style.objectFit = "contain";
+ghost.appendChild(img);
         ghost.style.width = size + "px";
         ghost.style.height = size + "px";
         ghost.style.fontSize = size * 0.8 + "px";
