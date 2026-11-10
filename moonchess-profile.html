@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profile | Moonchess</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<meta name="description" content="Your Moonchess puzzle statistics and achievements.">
+<link rel="stylesheet" href="style.css">
+<style>
+.profile-page{width:100%;max-width:1100px;padding-bottom:3rem;box-sizing:border-box}
+.profile-page *{box-sizing:border-box}
+.profile-header,.profile-card,.achievement{background:#291743;border:1px solid #59427d;border-radius:16px}
+.profile-header{padding:2rem;display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap}
+.avatar{height:76px;width:76px;display:grid;place-items:center;border-radius:18px;background:#49316f;color:#ffd84d;font-size:3rem}
+.profile-header h1{margin:.2rem 0;font-size:clamp(1.6rem,4vw,2.3rem)}
+.muted{color:#b9a5e3}.profile-header .muted{margin:0}
+.profile-actions{margin-left:auto;display:flex;gap:.5rem;flex-wrap:wrap}
+.profile-btn{font:inherit;border:1px solid #8066a4;background:transparent;color:#f5f0fa;border-radius:9px;padding:.65rem 1rem;cursor:pointer;text-decoration:none}
+.profile-btn:hover{background:#49316f}
+.profile-tabs{display:flex;gap:.65rem;margin:1.5rem 0;flex-wrap:wrap}
+.profile-tab{font:inherit;border:1px solid #8066a4;background:#291743;color:#f5f0fa;padding:.8rem 1.4rem;border-radius:10px;cursor:pointer}
+.profile-tab[aria-selected="true"]{background:#ffd84d;color:#1e1033;border-color:#ffd84d;font-weight:700}
+.profile-page h2{font-size:1.5rem;margin:1.5rem 0 1rem}
+.stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+.profile-card{padding:1.3rem}
+.stat-value{display:block;font-size:2rem;font-weight:800;color:#ffd84d;margin-bottom:.4rem}
+.stat-label{color:#e2d9f3}
+.progress-row{margin:1.2rem 0}.progress-row-top{display:flex;justify-content:space-between;gap:1rem;margin-bottom:.5rem}
+.track{height:11px;background:#49316f;border-radius:30px;overflow:hidden}.fill{height:100%;background:#ffd84d;width:0;transition:width .3s}
+.achievements-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+.achievement{padding:1.2rem;display:flex;flex-direction:column;gap:.5rem;min-height:155px}
+.achievement .symbol{font-size:1.9rem;color:#ffd84d}
+.achievement.locked{opacity:.6}.achievement.locked .symbol{color:#b9a5e3}
+.achievement h3{margin:0;font-size:1.05rem}.achievement p{margin:0;color:#e2d9f3;font-size:.9rem}
+.achievement .state{margin-top:auto;font-size:.8rem;color:#ffd84d;font-weight:700}
+.achievement.locked .state{color:#b9a5e3}
+.notice{color:#e2d9f3;line-height:1.6}.error{color:#ff9aa2}
+[hidden]{display:none!important}
+@media(max-width:750px){.stats-grid,.achievements-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-actions{margin-left:0;width:100%}}
+@media(max-width:480px){.stats-grid,.achievements-grid{grid-template-columns:1fr}.profile-header{padding:1.3rem}}
+</style>
+</head>
+<body class="home" style="visibility:hidden">
+<div class="layout">
+<aside class="sidebar">
+<a class="logo" href="index.html">Moonchess</a>
+<nav class="tabs" aria-label="Main">
+<a class="tab" href="index.html">Home</a>
+<a class="tab" href="puzzles.html">Puzzles</a>
+<a class="tab" href="profile.html" aria-current="page">Profile</a>
+<span class="tab disabled" aria-disabled="true">Courses <small>Soon</small></span>
+</nav>
+<div class="side-coins"><span class="coin-dot"></span><span><span id="side-coins">0</span> mooncoins</span></div>
+</aside>
+<main class="content profile-page">
+<section class="profile-header">
+<div class="avatar" aria-hidden="true">♞</div>
+<div><p class="muted">PLAYER PROFILE</p><h1 id="player-name">Loading...</h1><p class="muted" id="player-note">Your Moonchess journey</p></div>
+<div class="profile-actions"><a class="profile-btn" href="puzzles.html">Play puzzles</a><button type="button" class="profile-btn" id="logout-btn" hidden>Sign out</button><a class="profile-btn" id="signin-link" href="auth.html" hidden>Sign in</a></div>
+</section>
+<div class="profile-tabs" role="tablist" aria-label="Profile sections">
+<button type="button" class="profile-tab" id="stats-tab" role="tab" aria-selected="true" aria-controls="stats-panel">Statistics</button>
+<button type="button" class="profile-tab" id="achievements-tab" role="tab" aria-selected="false" aria-controls="achievements-panel">Achievements</button>
+</div>
+<p id="message" class="notice" role="status">Loading your saved progress...</p>
+<section id="stats-panel" role="tabpanel" aria-labelledby="stats-tab">
+<div class="stats-grid">
+<div class="profile-card"><span class="stat-value" id="total-coins">0</span><span class="stat-label">Mooncoins</span></div>
+<div class="profile-card"><span class="stat-value" id="total-solved">0</span><span class="stat-label">Unique puzzles solved</span></div>
+<div class="profile-card"><span class="stat-value" id="unlocked-count">0 / 24</span><span class="stat-label">Achievements unlocked</span></div>
+</div>
+<h2>Puzzle progress</h2>
+<div class="profile-card" id="progress-list"></div>
+</section>
+<section id="achievements-panel" role="tabpanel" aria-labelledby="achievements-tab" hidden>
+<h2>Your achievements</h2>
+<p class="muted">Unlock badges by solving unique puzzles. Every category has its own milestones.</p>
+<div id="achievement-list"></div>
+</section>
+</main>
+</div>
+<script src="mate1.js"></script>
+<script src="mate2.js"></script>
+<script src="mate3.js"></script>
+<script type="module">
+import {requireSession,watchProfile,logout} from './account.js';
+const $=id=>document.getElementById(id);
+const thresholds=[1,10,25,50,75,100];
+const names=['First Checkmate','Rising Star','Puzzle Challenger','Chess Expert','Master Tactician','Moon Legend'];
+const groups=[
+ {label:'All puzzles',mate:0,ids:null},
+ {label:'Mate in 1',mate:1,ids:new Set(MOONCHESS_MATEIN1.map(p=>'lichess:'+p.id))},
+ {label:'Mate in 2',mate:2,ids:new Set(MOONCHESS_MATEIN2.map(p=>'lichess:'+p.id))},
+ {label:'Mate in 3',mate:3,ids:new Set(MOONCHESS_MATEIN3.map(p=>'lichess:'+p.id))}
+];
+const allIds=new Set(groups.slice(1).flatMap(g=>[...g.ids]));
+groups[0].ids=allIds;
+const totalAchievements=groups.length*thresholds.length;
+function element(tag,cls,text){const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;}
+function render(profile){
+ const solved=new Set(Array.isArray(profile?.solved)?profile.solved:[]);
+ const coins=Math.max(0,Number(profile?.coins)||0);
+ const counts=groups.map(g=>[...g.ids].filter(id=>solved.has(id)).length);
+ $('side-coins').textContent=coins;
+ $('total-coins').textContent=coins;
+ $('total-solved').textContent=counts[0];
+ $('progress-list').replaceChildren();
+ groups.forEach((g,i)=>{
+  const wrap=element('div','progress-row');const top=element('div','progress-row-top');
+  top.append(element('strong','',g.label),element('span','muted',counts[i]+' / '+g.ids.size));
+  const track=element('div','track');const fill=element('div','fill');
+  fill.style.width=(g.ids.size?100*counts[i]/g.ids.size:0)+'%';
+  track.append(fill);wrap.append(top,track);$('progress-list').append(wrap);
+ });
+ $('achievement-list').replaceChildren();
+ let unlocked=0;
+ groups.forEach((g,i)=>{
+  const heading=element('h2','',g.label);
+  const grid=element('div','achievements-grid');
+  thresholds.forEach((target,j)=>{
+   const done=counts[i]>=target;if(done)unlocked++;
+   const card=element('article','achievement'+(done?'':' locked'));
+   card.append(element('span','symbol',done?'★':'◇'),element('h3','',names[j]),element('p','',`Solve ${target} ${g.mate?'Mate in '+g.mate+' ':' '}puzzle${target===1?'':'s'}`),element('span','state',done?'Unlocked':counts[i]+' / '+target));
+   grid.append(card);
+  });
+  $('achievement-list').append(heading,grid);
+ });
+ $('unlocked-count').textContent=unlocked+' / '+totalAchievements;
+}
+function selectTab(tab){
+ const stats=tab==='stats';$('stats-panel').hidden=!stats;$('achievements-panel').hidden=stats;
+ $('stats-tab').setAttribute('aria-selected',String(stats));$('achievements-tab').setAttribute('aria-selected',String(!stats));
+ if(location.hash!=='#'+tab)history.replaceState(null,'','#'+tab);
+}
+$('stats-tab').addEventListener('click',()=>selectTab('stats'));
+$('achievements-tab').addEventListener('click',()=>selectTab('achievements'));
+$('logout-btn').addEventListener('click',async()=>{try{await logout();}catch(e){$('message').textContent='Could not sign out. Please try again.';$('message').className='notice error';}});
+selectTab(location.hash==='#achievements'?'achievements':'stats');
+requireSession(user=>{
+ if(!user){$('player-name').textContent='Guest Player';$('player-note').textContent='Create an account to save progress and unlock achievements.';$('signin-link').hidden=false;render({coins:0,solved:[]});$('message').textContent='Guest progress and achievements are not saved.';document.body.style.visibility='visible';return;}
+ $('player-name').textContent=user.displayName||'Moonchess Player';$('player-note').textContent='Your achievements are saved with your account.';$('logout-btn').hidden=false;
+ watchProfile(user.uid,data=>{if(data?.username)$('player-name').textContent=data.username;render(data);$('message').textContent='';document.body.style.visibility='visible';});
+});
+</script>
+</body>
+</html>
