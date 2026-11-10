@@ -96,5 +96,22 @@
   document.getElementById('home-solved').textContent = new Set(solved).size;
 })();
 </script>
+  
+<script type="module">
+import { auth, isGuest } from './account.js';
+import { onAuthStateChanged } from
+  'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+
+document.body.style.visibility = 'hidden';
+
+onAuthStateChanged(auth, user => {
+  if (user || isGuest()) {
+    document.body.style.visibility = 'visible';
+  } else {
+    window.location.replace('auth.html');
+  }
+});
+</script>
+
 </body>
 </html>
