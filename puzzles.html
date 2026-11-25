@@ -356,9 +356,9 @@
     </main>
   </div>
 
-  <script src="mate1.js"></script>
-  <script src="mate2.js"></script>
-  <script src="mate3.js"></script>
+  <script src="mate1.js?v=10000"></script>
+  <script src="mate2.js?v=10000"></script>
+  <script src="mate3.js?v=10000"></script>
   <script type="module">
 "use strict";
 import { Chess } from "https://cdn.jsdelivr.net/npm/chess.js@1.4.0/+esm";
@@ -451,13 +451,17 @@ function enterSession(user) {
   ratingFeedback = "";
   updateCoins();
   if (user) {
-    unsubscribeProfile = watchProfile(user.uid, applyProfile);
+    sessionReady = false;
+    unsubscribeProfile = watchProfile(user.uid, data => {
+      applyProfile(data);
+      if (!sessionReady) { sessionReady = true; loadPuzzle(nextRandomPuzzle()); }
+    });
     document.getElementById("account-state").textContent =
       "Playing as " + (user.displayName || user.email || "Member");
   } else {
     document.getElementById("account-state").textContent = "Playing as Guest · No mooncoins";
   }
-  if (!puzzle && pools.length) loadPuzzle(nextRandomPuzzle());
+  if (!user && pools.length) loadPuzzle(nextRandomPuzzle());
   updateRatingInfo();
 }
 const pools = [
@@ -693,7 +697,7 @@ hintBtn.addEventListener("click",()=>{
   setStatus("Hint: Move the highlighted piece.");renderBoard();
 });
 restartBtn.addEventListener("click",()=>{if(puzzle)loadPuzzle(puzzle);});
-nextBtn.addEventListener("click",()=>{if(pools.length)loadPuzzle(nextRandomPuzzle());});
+nextBtn.addEventListener("click",()=>{if(sessionReady && !rewardBusy && !failureBusy && pools.length)loadPuzzle(nextRandomPuzzle());});
 
 function findBoardSquare(x,y) {
   const el=document.elementFromPoint(x,y);
