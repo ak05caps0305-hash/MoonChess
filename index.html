@@ -5,10 +5,11 @@
      crossorigin="anonymous"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Moonchess: Earn Your Mastery</title>
+  <title>MoonChess: Earn Your Mastery</title>
+<!-- Dashboard revision 3: embedded styles -->
     <link rel="icon" type="image/png" href="Untitled Design.png">
   <meta name="description" content="Solve chess puzzles and earn mooncoins to unlock chess courses.">
-  <link rel="stylesheet" href="style.css?v=dashboard2">
+  <link rel="stylesheet" href="style.css?v=dashboard3">
 
 
 <style>
@@ -16,6 +17,16 @@
 
 .dashboard .dash-stats .dash-card{display:flex;flex-direction:column;gap:.25rem}.dashboard .dash-card svg{height:auto;max-height:320px}.dashboard .mini-board{grid-template-rows:repeat(8,minmax(0,1fr));grid-template-columns:repeat(8,minmax(0,1fr));min-width:0}.dashboard .mini-board span{min-height:0}.dashboard .mini-board img{min-height:0;max-height:100%;display:block}.dashboard header h1,.dashboard header h2{color:#FFD84D}.dashboard .elo-bar>div:first-child{border-right:1px solid #59427d}.dashboard .graph-link:focus-visible{outline:3px solid #FFD84D}.dashboard .daily-layout p{line-height:1.5}.dashboard .dash-card{overflow:hidden}
 
+
+/* Dashboard revision 3 */
+main.content.dashboard {width:100%;max-width:1500px;padding:2rem clamp(1rem,3vw,3rem);}
+.dashboard .dash-bottom {grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+.dashboard .dash-card {background:#291743;border:1px solid #8066a4;}
+.dashboard header h1 {font-family:Georgia,serif;color:#FFD84D;}
+.dashboard header h2 {color:#FFD84D;}
+.dashboard .daily-layout {grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+@media(max-width:1100px){.dashboard .dash-bottom{grid-template-columns:1fr;}}
+@media(max-width:600px){.dashboard .daily-layout{grid-template-columns:1fr;}.dashboard .elo-bar{grid-template-columns:1fr;}.dashboard .elo-bar>div:first-child{border:0;}}
 </style>
 </head>
 <body class="home">
