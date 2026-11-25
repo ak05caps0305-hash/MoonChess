@@ -1,23 +1,112 @@
+
 rules_version = '2';
 service cloud.firestore {
- match /databases/{database}/documents {
-  match /users/{uid} {
-   function owner(){return request.auth != null && request.auth.uid == uid;}
-   function old(){return resource.data;}
-   function n(){return request.resource.data;}
-   function r(){return old().get('rating',1000);}
-   function keys(k){return n().diff(old()).affectedKeys().hasOnly(k);}
-   function appendOne(a,b){return b is list && b.size()==a.size()+1 && b.hasAll(a);}
-   function history(){return n().ratingHistory is list && n().ratingHistory.size()<=500 && n().ratingHistory.size()>0 && n().ratingHistory[n().ratingHistory.size()-1]==n().rating;}
-   function daily(){return n().dailyDay is int && n().dailyDay > old().get('dailyDay',-1) && n().dailyDay == (request.time.toMillis() - request.time.toMillis()%86400000)/86400000;}
-   allow read: if owner();
-   allow create: if owner() && n().keys().hasOnly(['username','email','coins','solved','failed','rating','createdAt']) && n().coins==0 && n().solved==[] && n().failed==[] && n().rating==1000 && n().username is string && n().username.size()>=3 && n().username.size()<=20 && n().email==request.auth.token.email;
-   allow update: if owner() && (
-    (keys(['coins','solved','rating','ratingHistory','dailyDay']) && appendOne(old().solved,n().solved) && n().rating is int && n().rating>=r()+1 && n().rating<=r()+5 && history() && ((n().coins==old().coins+10 && n().get('dailyDay',-1)==old().get('dailyDay',-1)) || (n().coins==old().coins+25 && daily()))) ||
-    (keys(['rating','failed','ratingHistory']) && appendOne(old().get('failed',[]),n().failed) && n().rating is int && n().rating>=0 && n().rating>=r()-5 && (n().rating<r() || (r()==0 && n().rating==0)) && history()) ||
-    (keys(['coins','dailyDay']) && n().coins==old().coins+25 && daily())
-   );
-   allow delete: if false;
+  match /databases/{database}/documents {
+    match /users/{uid} {
+
+      function owner() {
+        return request.auth != null
+          && request.auth.uid == uid;
+      }
+
+      function old() {
+        return resource.data;
+      }
+
+      function n() {
+        return request.resource.data;
+      }
+
+      function r() {
+        return old().get('rating', 1000);
+      }
+
+      function keys(k) {
+        return n().diff(old()).affectedKeys().hasOnly(k);
+      }
+
+      function appendOne(a, b) {
+        return b is list
+          && b.size() == a.size() + 1
+          && b.hasAll(a);
+      }
+
+      function history() {
+        return n().ratingHistory is list
+          && n().ratingHistory.size() <= 500
+          && n().ratingHistory.size() > 0
+          && n().ratingHistory[n().ratingHistory.size() - 1] == n().rating;
+      }
+
+      function daily() {
+        return n().dailyDay is int
+          && n().dailyDay > old().get('dailyDay', -1)
+          && n().dailyDay * 86400000 <= request.time.toMillis()
+          && (n().dailyDay + 1) * 86400000 > request.time.toMillis();
+      }
+
+      allow read: if owner();
+
+      allow create: if owner()
+        && n().keys().hasOnly([
+          'username', 'email', 'coins', 'solved',
+          'failed', 'rating', 'createdAt'
+        ])
+        && n().coins == 0
+        && n().solved == []
+        && n().failed == []
+        && n().rating == 1000
+        && n().username is string
+        && n().username.size() >= 3
+        && n().username.size() <= 20
+        && n().email == request.auth.token.email;
+
+      allow update: if owner() && (
+        (
+          keys([
+            'coins', 'solved', 'rating',
+            'ratingHistory', 'dailyDay'
+          ])
+          && appendOne(old().solved, n().solved)
+          && n().rating is int
+          && n().rating >= r() + 1
+          && n().rating <= r() + 5
+          && history()
+          && (
+            (
+              n().coins == old().coins + 10
+              && n().get('dailyDay', -1) ==
+                 old().get('dailyDay', -1)
+            )
+            ||
+            (
+              n().coins == old().coins + 25
+              && daily()
+            )
+          )
+        )
+        ||
+        (
+          keys(['rating', 'failed', 'ratingHistory'])
+          && appendOne(old().get('failed', []), n().failed)
+          && n().rating is int
+          && n().rating >= 0
+          && n().rating >= r() - 5
+          && (
+            n().rating < r()
+            || (r() == 0 && n().rating == 0)
+          )
+          && history()
+        )
+        ||
+        (
+          keys(['coins', 'dailyDay'])
+          && n().coins == old().coins + 25
+          && daily()
+        )
+      );
+
+      allow delete: if false;
+    }
   }
- }
 }
