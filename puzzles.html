@@ -362,9 +362,13 @@
   <script type="module">
 "use strict";
 import { Chess } from "https://cdn.jsdelivr.net/npm/chess.js@1.4.0/+esm";
-import { auth, isGuest, watchProfile, awardPuzzle, penalizePuzzle } from "./account.js?v=2";
+import { auth, isGuest, watchProfile, awardPuzzle, penalizePuzzle } from "./account.js?v=3";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
+import {dailyPuzzle,day} from "./dashboard.js?v=1";
+const params=new URLSearchParams(location.search);
+let dailyMode=params.get("daily")==="1", dailyStart=day();
+function initialPuzzle(){return dailyMode?dailyPuzzle():pools.find(p=>p.id===params.get("id")&&!solvedSet.has("lichess:"+p.id))||nextRandomPuzzle();}
 const FILES = "abcdefgh";
 const PIECE_NAMES = {k:"king",q:"queen",r:"rook",b:"bishop",n:"knight",p:"pawn"};
 let currentUser = null;
@@ -454,14 +458,14 @@ function enterSession(user) {
     sessionReady = false;
     unsubscribeProfile = watchProfile(user.uid, data => {
       applyProfile(data);
-      if (!sessionReady) { sessionReady = true; loadPuzzle(nextRandomPuzzle()); }
+      if (!sessionReady) { sessionReady = true; loadPuzzle(initialPuzzle()); }
     });
     document.getElementById("account-state").textContent =
       "Playing as " + (user.displayName || user.email || "Member");
   } else {
     document.getElementById("account-state").textContent = "Playing as Guest · No mooncoins";
   }
-  if (!user && pools.length) loadPuzzle(nextRandomPuzzle());
+  if (!user && pools.length) loadPuzzle(initialPuzzle());
   updateRatingInfo();
 }
 const pools = [
@@ -557,7 +561,7 @@ function loadPuzzle(newPuzzle) {
   playerColor=chess.turn();
   step=0; selected=null; hintSquare=null; lastMove=[]; solved=false; thinking=false;
   showRatingFeedback('',0);
-  titleEl.textContent="Mate in " + puzzle.mate;
+  titleEl.textContent=(dailyMode?"Daily · ":"")+"Mate in " + puzzle.mate;
   countEl.textContent=pools.length + " puzzles · Matched to your rating";
   updateRatingInfo();
   nextBtn.classList.remove("primary");
@@ -629,7 +633,7 @@ async function completePuzzle() {
   }
   const key = "lichess:" + puzzle.id;
   const rewardUser = currentUser.uid;
-  if (solvedSet.has(key)) {
+  if (solvedSet.has(key) && !dailyMode) {
     setStatus("Checkmate! You've already earned coins for this puzzle.", "good");
     return;
   }
@@ -637,9 +641,9 @@ async function completePuzzle() {
   rewardBusy = true;
   setStatus("Checkmate! Saving your reward...", "good");
   try {
-    const awarded = await awardPuzzle(rewardUser, puzzle.id, puzzle.rating);
-    if (awarded) showRatingFeedback('win',awarded);
-    setStatus(awarded ? `Checkmate! +10 mooncoins, +${awarded} rating.` :
+    const awarded = await awardPuzzle(rewardUser, puzzle.id, puzzle.rating,dailyMode && dailyStart===day() && puzzle.id===dailyPuzzle().id);
+    if (awarded.gain) showRatingFeedback('win',awarded.gain);
+    setStatus(awarded.coins ? `Checkmate! +${awarded.coins} mooncoins, +${awarded.gain} rating.` :
       "Checkmate! You've already earned coins for this puzzle.", "good");
   } catch (error) {
     console.error("Reward could not be saved", error);
@@ -696,8 +700,8 @@ hintBtn.addEventListener("click",()=>{
   hintSquare=sqIndex(move.slice(0,2));
   setStatus("Hint: Move the highlighted piece.");renderBoard();
 });
-restartBtn.addEventListener("click",()=>{if(puzzle)loadPuzzle(puzzle);});
-nextBtn.addEventListener("click",()=>{if(sessionReady && !rewardBusy && !failureBusy && pools.length)loadPuzzle(nextRandomPuzzle());});
+restartBtn.addEventListener("click",()=>{if(puzzle && !rewardBusy && !failureBusy)loadPuzzle(puzzle);});
+nextBtn.addEventListener("click",()=>{if(sessionReady && !rewardBusy && !failureBusy && pools.length){dailyMode=false;loadPuzzle(nextRandomPuzzle());}});
 
 function findBoardSquare(x,y) {
   const el=document.elementFromPoint(x,y);

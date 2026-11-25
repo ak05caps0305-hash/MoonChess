@@ -64,7 +64,7 @@
 <div class="profile-tabs" role="tablist" aria-label="Profile sections">
 <button type="button" class="profile-tab" id="stats-tab" role="tab" aria-selected="true" aria-controls="stats-panel">Statistics</button>
 <button type="button" class="profile-tab" id="achievements-tab" role="tab" aria-selected="false" aria-controls="achievements-panel">Achievements</button>
-</div>
+<button type="button" class="profile-tab" id="graph-tab" role="tab" aria-selected="false" aria-controls="graph-panel">Graph</button></div>
 <p id="message" class="notice" role="status">Loading your saved progress...</p>
 <section id="stats-panel" role="tabpanel" aria-labelledby="stats-tab">
 <div class="stats-grid">
@@ -81,13 +81,14 @@
 <p class="muted">Unlock badges by solving unique puzzles. Every category has its own milestones.</p>
 <div id="achievement-list"></div>
 </section>
-</main>
+<section id="graph-panel" role="tabpanel" aria-labelledby="graph-tab" hidden><h2>Your ELO Graph</h2><div class="profile-card" id="profile-graph"></div><p class="muted">Rating history recorded since the dashboard update (latest 500 changes).</p></section></main>
 </div>
-<script src="mate1.js"></script>
-<script src="mate2.js"></script>
-<script src="mate3.js"></script>
+<script src="mate1.js?v=10000"></script>
+<script src="mate2.js?v=10000"></script>
+<script src="mate3.js?v=10000"></script>
 <script type="module">
-import {requireSession,watchProfile,logout} from './account.js';
+import {requireSession,watchProfile,logout} from './account.js?v=3';
+import {graph} from './dashboard.js?v=1';
 const $=id=>document.getElementById(id);
 const thresholds=[1,10,25,50,75,100];
 const names=['First Checkmate','Rising Star','Puzzle Challenger','Chess Expert','Master Tactician','Moon Legend'];
@@ -102,6 +103,7 @@ groups[0].ids=allIds;
 const totalAchievements=groups.length*thresholds.length;
 function element(tag,cls,text){const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;}
 function render(profile){
+ graph($('profile-graph'),profile);
  const solved=new Set(Array.isArray(profile?.solved)?profile.solved:[]);
  const coins=Math.max(0,Number(profile?.coins)||0);
  const counts=groups.map(g=>[...g.ids].filter(id=>solved.has(id)).length);
@@ -133,14 +135,14 @@ function render(profile){
  $('unlocked-count').textContent=unlocked+' / '+totalAchievements;
 }
 function selectTab(tab){
- const stats=tab==='stats';$('stats-panel').hidden=!stats;$('achievements-panel').hidden=stats;
- $('stats-tab').setAttribute('aria-selected',String(stats));$('achievements-tab').setAttribute('aria-selected',String(!stats));
+ for(const name of ['stats','achievements','graph']){$(name+'-panel').hidden=name!==tab;$(name+'-tab').setAttribute('aria-selected',String(name===tab));}
  if(location.hash!=='#'+tab)history.replaceState(null,'','#'+tab);
 }
 $('stats-tab').addEventListener('click',()=>selectTab('stats'));
 $('achievements-tab').addEventListener('click',()=>selectTab('achievements'));
 $('logout-btn').addEventListener('click',async()=>{try{await logout();}catch(e){$('message').textContent='Could not sign out. Please try again.';$('message').className='notice error';}});
-selectTab(location.hash==='#achievements'?'achievements':'stats');
+$('graph-tab').addEventListener('click',()=>selectTab('graph'));
+selectTab(['#achievements','#graph'].includes(location.hash)?location.hash.slice(1):'stats');
 requireSession(user=>{
  if(!user){$('player-name').textContent='Guest Player';$('player-note').textContent='Create an account to save progress and unlock achievements.';$('signin-link').hidden=false;render({coins:0,solved:[]});$('message').textContent='Guest progress and achievements are not saved.';document.body.style.visibility='visible';return;}
  $('player-name').textContent=user.displayName||'Moonchess Player';$('player-note').textContent='Your achievements are saved with your account.';$('logout-btn').hidden=false;

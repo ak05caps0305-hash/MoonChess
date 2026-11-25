@@ -29,17 +29,23 @@ export async function login(email,password) { const r=await signInWithEmailAndPa
 export async function logout() { leaveGuest(); if(auth) await signOut(auth); location.href='auth.html'; }
 export async function resetPassword(email) { return sendPasswordResetEmail(auth,email); }
 export function watchProfile(uid,callback) { return onSnapshot(doc(db,'users',uid),snap=>callback(snap.exists()?snap.data():{coins:0,solved:[]})); }
-export async function awardPuzzle(uid,id,puzzleRating) {
+export async function awardPuzzle(uid,id,puzzleRating, daily=false) {
   const ref=doc(db,'users',uid);const key='lichess:'+id;
   return runTransaction(db,async tx=>{
     const snap=await tx.get(ref);const data=snap.exists()?snap.data():{coins:0,solved:[]};
     const solved=Array.isArray(data.solved)?data.solved:[];
-    if(solved.includes(key)) return false;
+    const day=Math.floor(Date.now()/86400000);
+    const bonus=daily && (data.dailyDay ?? -1)<day;
+    if(solved.includes(key)) {
+      if(bonus) tx.update(ref,{coins:data.coins+25,dailyDay:day});
+      return {gain:0,coins:bonus?25:0};
+    }
     const currentRating = Number.isFinite(data.rating) ? data.rating : 1000;
     const difference = Number(puzzleRating) - currentRating;
     const gain = Math.max(1, Math.min(5, 3 + Math.floor(difference / 25)));
-    tx.set(ref,{coins:(Number(data.coins)||0)+10,solved:[...solved,key],rating:currentRating+gain},{merge:true});
-    return gain;
+    const rating=currentRating+gain;
+    tx.set(ref,{coins:(Number(data.coins)||0)+(bonus?25:10),solved:[...solved,key],rating,ratingHistory:history(data,currentRating,rating),...(bonus?{dailyDay:day}:{})},{merge:true});
+    return {gain,coins:bonus?25:10};
   });
 }
 
@@ -54,7 +60,13 @@ export async function penalizePuzzle(uid,id,puzzleRating) {
     const currentRating=Number.isInteger(data.rating)?data.rating:1000;
     const difference=Number(puzzleRating)-currentRating;
     const loss=Math.max(1,Math.min(5,3-Math.floor(difference/25)));
-    tx.update(ref,{rating:Math.max(0,currentRating-loss),failed:[...failed,key]});
-    return loss;
+    const rating=Math.max(0,currentRating-loss);
+    tx.update(ref,{rating,failed:[...failed,key],ratingHistory:history(data,currentRating,rating)});
+    return currentRating-rating;
   });
+}
+
+function history(data,oldRating,newRating){
+ const previous=Array.isArray(data.ratingHistory)?data.ratingHistory:[];
+ return [...(previous.length?previous:[oldRating]),newRating].slice(-500);
 }
